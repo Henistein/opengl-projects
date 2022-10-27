@@ -1,0 +1,9 @@
+Spherical mapping
+https://www.clicktorelease.com/blog/creating-spherical-environment-mapping-shader/
+
+- Adicionar um objeto 3d no centro do mapa
+- Controlar a camera com o teclado
+- Adicionar esfera a volta do objeto 3d
+- Colocar textura (hdr) no interior da esfera
+- Fazer reflexao para o objecto interior
+
