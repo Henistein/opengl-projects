@@ -5,6 +5,10 @@ GLFWwindow *Window::get_window(void){
   return this->window;
 }
 
+Shader *Window::get_shader(void){
+  return this->shader;
+}
+
 void Window::init_glfw(void){
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);

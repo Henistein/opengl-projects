@@ -60,5 +60,6 @@ public:
 
   /* Properties */
   GLFWwindow *get_window(void);
+  Shader *get_shader(void);
 
 };
