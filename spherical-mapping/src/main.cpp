@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "window.hpp"
+#include "mygraphics.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -62,18 +63,13 @@ void Window::refresh(void){
 
   // render container
   glBindVertexArray(VAO);
+
   // model matrix
   glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-  //model = glm::translate(model, cubePositions[i]);
-  //float angle = 20.0f * i;
-  //model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
   this->shader->setMat4("model", model);// calculate the model matrix for each object and pass it to shader before drawing
-  //glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-  //model = glm::translate(model, cubePositions[i]);
-  //float angle = 20.0f * i;
-  //model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-  //this->shader->setMat4("model", model);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+  glDrawArrays(GL_TRIANGLES, 0, 36);
+
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -90,7 +86,6 @@ int main(void){
   glfwSetFramebufferSizeCallback(window.get_window(), framebuffer_size_callback);
   glfwSetCursorPosCallback(window.get_window(), mouse_callback);
   glfwSetScrollCallback(window.get_window(), scroll_callback);
-
   // tell GLFW to capture our mouse
   glfwSetInputMode(window.get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -98,8 +93,11 @@ int main(void){
   Shader shader("4.1.texture.vs", "4.1.texture.fs"); 
   window.add_shader(&shader);
 
+  draw_cube(&VBO, &VAO);
+  create_texture(&texture, "wall.jpg");
   // set up vertex data (and buffer(s)) and configure vertex attributes
   // ------------------------------------------------------------------
+  /*
   float vertices[] = {
       // positions          // colors           // texture coords
        0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
@@ -111,6 +109,7 @@ int main(void){
       0, 1, 3, // first triangle
       1, 2, 3  // second triangle
   };
+  
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
   glGenBuffers(1, &EBO);
@@ -154,6 +153,7 @@ int main(void){
     std::cout << "Failed to load texture" << std::endl;
   }
   stbi_image_free(data);
+  */
 
   // run
   window.run();
