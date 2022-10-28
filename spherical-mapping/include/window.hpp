@@ -7,7 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <string>
-#include <shader_s.h>
+#include <shader_m.h>
 
 using namespace std;
 

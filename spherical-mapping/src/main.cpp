@@ -1,7 +1,6 @@
 #include <iostream>
 
 #include "window.hpp"
-#include <shader_s.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -53,8 +52,27 @@ void Window::refresh(void){
   // activate shader
   this->shader->use();
 
+  // pass projection matrix to shader (note that in this case it could change every frame)
+  glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 100.0f);
+  this->shader->setMat4("projection", projection);
+
+  // camera/view transformation
+  glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+  this->shader->setMat4("view", view);
+
   // render container
   glBindVertexArray(VAO);
+  // model matrix
+  glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+  //model = glm::translate(model, cubePositions[i]);
+  //float angle = 20.0f * i;
+  //model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+  this->shader->setMat4("model", model);// calculate the model matrix for each object and pass it to shader before drawing
+  //glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+  //model = glm::translate(model, cubePositions[i]);
+  //float angle = 20.0f * i;
+  //model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+  //this->shader->setMat4("model", model);
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
