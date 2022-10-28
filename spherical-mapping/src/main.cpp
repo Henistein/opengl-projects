@@ -11,7 +11,7 @@
 unsigned int W_WIDTH = 1366;
 unsigned int W_HEIGHT = 768;
 
-unsigned int texture;
+unsigned int cube_texture;
 unsigned int cube_VBO, cube_VAO;
 
 // camera
@@ -49,35 +49,36 @@ void Window::refresh(void){
   glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
-  // bind Texture
-  glBindTexture(GL_TEXTURE_2D, texture);
-
   glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 100.0f);
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
   glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
 
   /* CUBE */
-  /*
+  // render container
+  glBindVertexArray(cube_VAO);
+  // bind cube Texture
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, cube_texture); 
   // activate shader
   this->shaders["cube"]->use();
   // projection view model
   this->shaders["cube"]->setMat4("projection", projection);
   this->shaders["cube"]->setMat4("view", view);
   this->shaders["cube"]->setMat4("model", model);
-  // render container
-  glBindVertexArray(cube_VAO);
   // draw cube
   glDrawArrays(GL_TRIANGLES, 0, 36);
-  */
 
   /* Sphere */
   // objects
-  Sphere sphere(1, 50, 50);
+  Sphere sphere(50, 50, 50);
   this->shaders["sphere"]->use();
   // projection view model
   this->shaders["sphere"]->setMat4("projection", projection);
   this->shaders["sphere"]->setMat4("view", view);
   this->shaders["sphere"]->setMat4("model", model);
+  // texture
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, cube_texture);
   // draw sphere
   sphere.Draw();
   
@@ -106,19 +107,21 @@ int main(void){
 
   // build and compile shader
   window.add_shader("cube", new Shader("4.1.texture.vs", "4.1.texture.fs"));
-  window.add_shader("sphere", new Shader("sphereShader.vert", "sphereShader.frag"));
+  window.add_shader("sphere", new Shader("4.1.texture.vs", "4.1.texture.fs"));
 
   // draw cube and create a texture
   draw_cube(&cube_VBO, &cube_VAO);
-  create_texture(&texture, "wall.jpg");
+  load_texture(&cube_texture, "wall.jpg");
+  
+  //create_texture(&cube_texture, "wall.jpg");
 
   // draw sphere (radius, sectors, stacks)
   //draw_sphere(2, 50, 50);
   //esfera(2);
 
   // activate shader pass the texture to it
-  window.get_shader("cube")->use();
-  window.get_shader("cube")->setInt("texture", 0);
+  //window.get_shader("cube")->use();
+  //window.get_shader("cube")->setInt("texture", cube_texture);
 
   // run
   window.run();

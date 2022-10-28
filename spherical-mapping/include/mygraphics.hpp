@@ -61,4 +61,5 @@ inline float cube_vertices[] = {
 
 void draw_cube(unsigned int *, unsigned int *);
 void create_texture(unsigned int *, char const *);
+void load_texture(unsigned int *textureID, char const * path);
 //void draw_sphere(unsigned int radius, float sector_count, float stack_count);
