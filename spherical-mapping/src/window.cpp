@@ -1,13 +1,6 @@
 #include <iostream>
 #include "window.hpp"
 
-GLFWwindow *Window::get_window(void){
-  return this->window;
-}
-
-Shader *Window::get_shader(void){
-  return this->shader;
-}
 
 void Window::init_glfw(void){
   glfwInit();
@@ -57,6 +50,14 @@ void Window::finalize(void){
   glfwTerminate();
 }
 
-void Window::add_shader(Shader *shader){
-  this->shader = shader;
+void Window::add_shader(string name, Shader *shader){
+  this->shaders[name] = shader;
+}
+
+GLFWwindow *Window::get_window(void){
+  return this->window;
+}
+
+Shader *Window::get_shader(string name){
+  return this->shaders[name];
 }

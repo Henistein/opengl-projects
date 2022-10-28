@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "window.hpp"
+#include "Sphere.h"
 #include "mygraphics.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -11,7 +12,7 @@ unsigned int W_WIDTH = 1366;
 unsigned int W_HEIGHT = 768;
 
 unsigned int texture;
-unsigned int VBO, VAO;
+unsigned int cube_VBO, cube_VAO;
 
 // camera
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -35,6 +36,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
+
 /* Main code */
 void Window::refresh(void){
   // frame time logic
@@ -50,25 +52,35 @@ void Window::refresh(void){
   // bind Texture
   glBindTexture(GL_TEXTURE_2D, texture);
 
-  // activate shader
-  this->shader->use();
-
-  // pass projection matrix to shader (note that in this case it could change every frame)
   glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 100.0f);
-  this->shader->setMat4("projection", projection);
-
-  // camera/view transformation
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-  this->shader->setMat4("view", view);
-
-  // render container
-  glBindVertexArray(VAO);
-
-  // model matrix
   glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-  this->shader->setMat4("model", model);// calculate the model matrix for each object and pass it to shader before drawing
 
+  /* CUBE */
+  /*
+  // activate shader
+  this->shaders["cube"]->use();
+  // projection view model
+  this->shaders["cube"]->setMat4("projection", projection);
+  this->shaders["cube"]->setMat4("view", view);
+  this->shaders["cube"]->setMat4("model", model);
+  // render container
+  glBindVertexArray(cube_VAO);
+  // draw cube
   glDrawArrays(GL_TRIANGLES, 0, 36);
+  */
+
+  /* Sphere */
+  // objects
+  Sphere sphere(1, 50, 50);
+  this->shaders["sphere"]->use();
+  // projection view model
+  this->shaders["sphere"]->setMat4("projection", projection);
+  this->shaders["sphere"]->setMat4("view", view);
+  this->shaders["sphere"]->setMat4("model", model);
+  // draw sphere
+  sphere.Draw();
+  
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -93,19 +105,26 @@ int main(void){
   glfwSetInputMode(window.get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
   // build and compile shader
-  Shader shader("4.1.texture.vs", "4.1.texture.fs"); 
-  window.add_shader(&shader);
+  window.add_shader("cube", new Shader("4.1.texture.vs", "4.1.texture.fs"));
+  window.add_shader("sphere", new Shader("sphereShader.vert", "sphereShader.frag"));
 
-  draw_cube(&VBO, &VAO);
+  // draw cube and create a texture
+  draw_cube(&cube_VBO, &cube_VAO);
   create_texture(&texture, "wall.jpg");
-  window.get_shader()->use();
-  window.get_shader()->setInt("texture", 0);
+
+  // draw sphere (radius, sectors, stacks)
+  //draw_sphere(2, 50, 50);
+  //esfera(2);
+
+  // activate shader pass the texture to it
+  window.get_shader("cube")->use();
+  window.get_shader("cube")->setInt("texture", 0);
 
   // run
   window.run();
 
-  glDeleteVertexArrays(1, &VAO);
-  glDeleteBuffers(1, &VBO);
+  glDeleteVertexArrays(1, &cube_VAO);
+  glDeleteBuffers(1, &cube_VBO);
 
   return 0;
 }
