@@ -131,14 +131,15 @@ public:
 
 
 	}
-	void Draw()
-	{
+	void Draw(){
+		glDepthFunc(GL_LEQUAL);
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES,   
 			(unsigned int)sphere_indices.size(),
 			GL_UNSIGNED_INT,					
 			(void*)0);
 		glBindVertexArray(0);
+		glDepthFunc(GL_LESS);
 	}
 };
 
