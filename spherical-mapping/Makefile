@@ -10,7 +10,7 @@ BIN	= $(addprefix $(BINDIR), $(_BIN))
 
 SRC	= $(wildcard src/*.cpp /usr/include/glad/glad.c)
 
-CFLAGS = -Wall -pedantic -g -std=c++17 -I$(INCLDIR) -I/usr/include/stb -lm -pthread -lGLEW -lglfw -lGLU -lGL -lX11 -lrt -ldl -lstdc++fs
+CFLAGS = -Wall -pedantic -g -std=c++17 -I$(INCLDIR) -I/usr/include/stb -lm -pthread -lGLEW -lglfw -lGLU -lGL -lX11 -lrt -ldl -lstdc++fs -lassimp
 
 $(BINDIR)/$(_BIN): $(SRC)
 	@$(CC) $(SRC) $(CFLAGS) -o $@

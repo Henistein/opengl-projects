@@ -4,6 +4,7 @@
 #include "Sphere.h"
 #include "mygraphics.hpp"
 #include "camera.h"
+#include "model.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -36,7 +37,9 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
-unsigned int loadCubemap(vector<std::string> faces);
+// objs
+//Model ourModel;
+
 
 /* Main code */
 void Window::refresh(void){
@@ -64,9 +67,11 @@ void Window::refresh(void){
 
   /* CUBE */
   // render object
-  glBindVertexArray(cube_VAO);
+  //glBindVertexArray(cube_VAO);
   // draw cube
-  glDrawArrays(GL_TRIANGLES, 0, 36);
+  //glDrawArrays(GL_TRIANGLES, 0, 36);
+  Model ourModel("suzanne.obj");
+  ourModel.Draw(*this->shaders["cube"]);
 
   /* Sphere */
   // objects
@@ -112,6 +117,7 @@ int main(void){
   // draw cube and create a texture
   draw_cube(&cube_VBO, &cube_VAO);
   load_texture(&sphere_texture, "unknown.png");
+  //ourModel = new Model("suzanne.obj");
 
   // activate shader pass the texture to it
   window.get_shader("cube")->use();
@@ -169,34 +175,4 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
   camera.ProcessMouseScroll(static_cast<float>(yoffset));
-}
-
-unsigned int loadCubemap(vector<std::string> faces)
-{
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
-
-    int width, height, nrComponents;
-    for (unsigned int i = 0; i < faces.size(); i++)
-    {
-        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrComponents, 0);
-        if (data)
-        {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-            stbi_image_free(data);
-        }
-        else
-        {
-            std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
-            stbi_image_free(data);
-        }
-    }
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-    return textureID;
 }
