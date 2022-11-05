@@ -38,7 +38,7 @@ public:
 
 		/* GENERATE VERTEX ARRAY */
 		float x, y, z, xy;                              // vertex position
-		float lengthInv = 1.0f / radius;    // vertex normal
+		//float lengthInv = 1.0f / radius;    // vertex normal
 		float s, t;                                     // vertex texCoord
 
 		float sectorStep = (float)(2 * M_PI / sectorCount);

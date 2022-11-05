@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 
 #include "window.hpp"
 #include "Sphere.h"
@@ -40,6 +41,14 @@ void processInput(GLFWwindow *window);
 // objs
 Model *ourModel;
 
+// Menu keys
+int background = 1;
+const char *textures[4] = {"sky.png", "matcap.jpg", "matcap2.jpg", "matcap3.jpg"};
+int curr_text = 0;
+int last_text = 0;
+int object = 1;
+int last_object = 1;
+const char *models[3] = {"suzanne.obj", "", "torus.obj"};
 
 /* Main code */
 void Window::refresh(void){
@@ -68,14 +77,21 @@ void Window::refresh(void){
   /* CUBE */
   // render object
   //glBindVertexArray(cube_VAO);
-  // draw cube
-  //glDrawArrays(GL_TRIANGLES, 0, 36);
+  // draw object
+  if(last_object != object){
+    ourModel = new Model(models[1+object]);
+    last_object = object;
+  }
   ourModel->Draw(*this->shaders["cube"]);
 
   /* Sphere */
+  if(last_text != curr_text){
+    load_texture(&sphere_texture, textures[curr_text]);
+  }
   // objects
   Sphere sphere(50, 50, 50);
   this->shaders["sphere"]->use();
+  model = glm::mat4(1.0f);
   view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
   // projection view model
   this->shaders["sphere"]->setMat4("projection", projection);
@@ -85,7 +101,9 @@ void Window::refresh(void){
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, sphere_texture);
   // draw sphere
-  //sphere.Draw();
+  if(background == 1){
+    sphere.Draw();
+  }
   
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -115,7 +133,7 @@ int main(void){
 
   // draw cube and create a texture
   draw_cube(&cube_VBO, &cube_VAO);
-  load_texture(&sphere_texture, "matcap.jpg");
+  load_texture(&sphere_texture, "sky.png");
   ourModel = new Model("suzanne.obj");
 
   // activate shader pass the texture to it
@@ -148,6 +166,30 @@ void processInput(GLFWwindow *window){
       camera.ProcessKeyboard(LEFT, deltaTime);
   if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
       camera.ProcessKeyboard(RIGHT, deltaTime);
+  if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS){
+    sleep(0.5);
+    background *= -1;
+  }
+  if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS){
+    last_text = curr_text;
+    curr_text = 0;
+  }
+  if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS){
+    last_text = curr_text;
+    curr_text = 1;
+  }
+  if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS){
+    last_text = curr_text;
+    curr_text = 2;
+  }
+  if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS){
+    last_text = curr_text;
+    curr_text = 3;
+  }
+  if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS){
+    sleep(0.5);
+    object *= -1;
+  }
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
