@@ -38,7 +38,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
 // objs
-//Model ourModel;
+Model *ourModel;
 
 
 /* Main code */
@@ -70,8 +70,7 @@ void Window::refresh(void){
   //glBindVertexArray(cube_VAO);
   // draw cube
   //glDrawArrays(GL_TRIANGLES, 0, 36);
-  Model ourModel("suzanne.obj");
-  ourModel.Draw(*this->shaders["cube"]);
+  ourModel->Draw(*this->shaders["cube"]);
 
   /* Sphere */
   // objects
@@ -86,7 +85,7 @@ void Window::refresh(void){
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, sphere_texture);
   // draw sphere
-  sphere.Draw();
+  //sphere.Draw();
   
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -116,8 +115,8 @@ int main(void){
 
   // draw cube and create a texture
   draw_cube(&cube_VBO, &cube_VAO);
-  load_texture(&sphere_texture, "unknown.png");
-  //ourModel = new Model("suzanne.obj");
+  load_texture(&sphere_texture, "matcap.jpg");
+  ourModel = new Model("suzanne.obj");
 
   // activate shader pass the texture to it
   window.get_shader("cube")->use();
