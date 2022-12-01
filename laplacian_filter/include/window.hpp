@@ -1,13 +1,17 @@
 #pragma once
 
-#include <vector>
+#define GLFW_INCLUDE_NONE
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+//#include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
-#include <string>
+#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <shader_m.h>
+
+#include <map>
+#include <string>
 
 using namespace std;
 
@@ -34,7 +38,7 @@ private:
   GLFWscrollfun          scroll_callback           = nullptr;
 
   /* Shaders */
-  Shader* shader;
+  map<string, Shader*> shaders;
 
   void init_glfw(void);
   int  init_glad(void);
@@ -53,12 +57,13 @@ public:
   virtual void refresh(void);
 
   /* Shader */
-  void add_shader(Shader*);
+  void add_shader(string, Shader*);
 
   Window(){};
   ~Window() {this->finalize();};
 
   /* Properties */
   GLFWwindow *get_window(void);
+  Shader *get_shader(string);
 
 };

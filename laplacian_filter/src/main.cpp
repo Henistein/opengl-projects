@@ -51,24 +51,26 @@ void Window::refresh(void){
   glBindTexture(GL_TEXTURE_2D, texture);
 
   // activate shader
-  this->shader->use();
+  this->shaders["shader"]->use();
 
   // pass projection matrix to shader (note that in this case it could change every frame)
   glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 100.0f);
-  this->shader->setMat4("projection", projection);
+  this->shaders["shader"]->setMat4("projection", projection);
 
   // camera/view transformation
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-  this->shader->setMat4("view", view);
+  this->shaders["shader"]->setMat4("view", view);
 
   // render container
   glBindVertexArray(VAO);
 
   // model matrix
   glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-  this->shader->setMat4("model", model);// calculate the model matrix for each object and pass it to shader before drawing
+  this->shaders["shader"]->setMat4("model", model);// calculate the model matrix for each object and pass it to shader before drawing
 
   glDrawArrays(GL_TRIANGLES, 0, 36);
+
+  this->shaders["screenshader"]->use();
 
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -92,11 +94,17 @@ int main(void){
   glEnable(GL_DEPTH_TEST);
 
   // build and compile shader
-  Shader shader("texture.vs", "texture.fs"); 
-  window.add_shader(&shader);
+  window.add_shader("shader", new Shader("texture.vs", "texture.fs"));
+  window.add_shader("screenshader", new Shader("screenshader.vs", "screenshader.fs"));
 
   draw_cube(&VBO, &VAO);
   create_texture(&texture, "wall.jpg");
+
+  window.get_shader("shader")->use();
+  window.get_shader("shader")->setInt("texture1", 0);
+
+  window.get_shader("screenshader")->use();
+  window.get_shader("screenshader")->setInt("screenTexture", 0);
 
   // run
   window.run();

@@ -1,0 +1,7 @@
+- Explicar porque o Laplacian é uma medida isotrópica de derivadas espaciais 2d de uma imagem.
+- Derivar a 2 derivada de uma imagem no eixo dos xs e dos ys.
+- Calcular a Laplacian
+- Usar um mapa sintetico 3d
+- Implementar a laplacian no fragment shader
+- Renderizar a mesma cena 3d aplicando a Laplacian
+- Usar botoes para mover a camera e ativar e desativar o laplacian
