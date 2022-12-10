@@ -55,7 +55,7 @@ void Window::refresh(void){
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // bind Texture
-  //glBindTexture(GL_TEXTURE_2D, texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
 
   // activate shader
   this->shaders["shader"]->use();
@@ -71,7 +71,9 @@ void Window::refresh(void){
   this->shaders["shader"]->setMat4("view", view);
   this->shaders["shader"]->setMat4("projection", projection);
 
-  // draw model obj
+  // render container
+  //glBindVertexArray(VAO);
+  //glDrawArrays(GL_TRIANGLES, 0, 36);
   ourModel->Draw(*this->shaders["shader"]);
 
   // activate screenshader
@@ -95,22 +97,25 @@ int main(void){
   // tell GLFW to capture our mouse
   glfwSetInputMode(window.get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+  stbi_set_flip_vertically_on_load(true);
   glEnable(GL_DEPTH_TEST);
 
   // build and compile shader
   window.add_shader("shader", new Shader("texture.vs", "texture.fs"));
+  //window.add_shader("shader", new Shader("1.model_loading.vs", "1.model_loading.fs"));
   window.add_shader("screenshader", new Shader("screenshader.vs", "screenshader.fs"));
 
   //draw_cube(&VBO, &VAO);
-  //create_texture(&texture, "wall.jpg");
+  create_texture(&texture, "wall.jpg");
 
   window.get_shader("shader")->use();
+  window.get_shader("shader")->setInt("screenTexture", 0);
 
   window.get_shader("screenshader")->use();
   window.get_shader("screenshader")->setInt("screenTexture", 0);
 
   // load obj
-  ourModel = new Model("city/city.obj");
+  ourModel = new Model("frame_1/untitled2.obj");
 
   // run
   window.run();

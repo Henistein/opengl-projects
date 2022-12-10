@@ -1,0 +1,22 @@
+# Blender 3.4.0 MTL File: 'None'
+# www.blender.org
+
+newmtl frame
+Ns 10.000005
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd T_picture_frame_BaseColor.tga
+
+newmtl picture1
+Ns 10.000005
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd T_picture_01_AlbedoTransparency.tga
