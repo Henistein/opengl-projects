@@ -2,6 +2,7 @@
 
 #include "window.hpp"
 #include "mygraphics.hpp"
+#include "model.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -29,6 +30,12 @@ float lastX =  800.0f / 2.0;
 float lastY =  600.0 / 2.0;
 float fov   =  45.0f;
 
+// options
+int option;
+
+// model obj
+Model *ourModel;
+
 /* Callbacks */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -48,30 +55,27 @@ void Window::refresh(void){
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // bind Texture
-  glBindTexture(GL_TEXTURE_2D, texture);
+  //glBindTexture(GL_TEXTURE_2D, texture);
 
   // activate shader
   this->shaders["shader"]->use();
 
-  // pass projection matrix to shader (note that in this case it could change every frame)
-  glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 100.0f);
+  this->shaders["shader"]->setInt("option", option);
+
+  // model view projection
+  glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+  glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+  glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 1000.0f);
+
+  this->shaders["shader"]->setMat4("model", model);
+  this->shaders["shader"]->setMat4("view", view);
   this->shaders["shader"]->setMat4("projection", projection);
 
-  // camera/view transformation
-  glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-  this->shaders["shader"]->setMat4("view", view);
+  // draw model obj
+  ourModel->Draw(*this->shaders["shader"]);
 
-  // render container
-  glBindVertexArray(VAO);
-
-  // model matrix
-  glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-  this->shaders["shader"]->setMat4("model", model);// calculate the model matrix for each object and pass it to shader before drawing
-
-  glDrawArrays(GL_TRIANGLES, 0, 36);
-
+  // activate screenshader
   this->shaders["screenshader"]->use();
-
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -97,14 +101,16 @@ int main(void){
   window.add_shader("shader", new Shader("texture.vs", "texture.fs"));
   window.add_shader("screenshader", new Shader("screenshader.vs", "screenshader.fs"));
 
-  draw_cube(&VBO, &VAO);
-  create_texture(&texture, "wall.jpg");
+  //draw_cube(&VBO, &VAO);
+  //create_texture(&texture, "wall.jpg");
 
   window.get_shader("shader")->use();
-  window.get_shader("shader")->setInt("texture1", 0);
 
   window.get_shader("screenshader")->use();
   window.get_shader("screenshader")->setInt("screenTexture", 0);
+
+  // load obj
+  ourModel = new Model("city/city.obj");
 
   // run
   window.run();
@@ -132,6 +138,15 @@ void processInput(GLFWwindow *window){
     cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
   if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+  // options
+  if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
+    option = 0;
+  if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS)
+    option = 1;
+  if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
+    option = 2;
+  if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS)
+    option = 3;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
