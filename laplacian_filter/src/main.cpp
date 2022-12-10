@@ -11,9 +11,6 @@
 unsigned int W_WIDTH = 1366;
 unsigned int W_HEIGHT = 768;
 
-unsigned int texture;
-unsigned int VBO, VAO, EBO;
-
 // camera
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -54,9 +51,6 @@ void Window::refresh(void){
   glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // bind Texture
-  glBindTexture(GL_TEXTURE_2D, texture);
-
   // activate shader
   this->shaders["shader"]->use();
 
@@ -72,8 +66,6 @@ void Window::refresh(void){
   this->shaders["shader"]->setMat4("projection", projection);
 
   // render container
-  //glBindVertexArray(VAO);
-  //glDrawArrays(GL_TRIANGLES, 0, 36);
   ourModel->Draw(*this->shaders["shader"]);
 
   // activate screenshader
@@ -102,11 +94,7 @@ int main(void){
 
   // build and compile shader
   window.add_shader("shader", new Shader("texture.vs", "texture.fs"));
-  //window.add_shader("shader", new Shader("1.model_loading.vs", "1.model_loading.fs"));
   window.add_shader("screenshader", new Shader("screenshader.vs", "screenshader.fs"));
-
-  //draw_cube(&VBO, &VAO);
-  create_texture(&texture, "wall.jpg");
 
   window.get_shader("shader")->use();
   window.get_shader("shader")->setInt("screenTexture", 0);
@@ -115,14 +103,10 @@ int main(void){
   window.get_shader("screenshader")->setInt("screenTexture", 0);
 
   // load obj
-  ourModel = new Model("frame_1/four_frames.obj");
+  ourModel = new Model("assets/four_frames.obj");
 
   // run
   window.run();
-
-  glDeleteVertexArrays(1, &VAO);
-  glDeleteBuffers(1, &VBO);
-  glDeleteBuffers(1, &EBO);
 
   return 0;
 }
