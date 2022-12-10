@@ -97,7 +97,7 @@ int main(void){
   // tell GLFW to capture our mouse
   glfwSetInputMode(window.get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-  stbi_set_flip_vertically_on_load(true);
+  //stbi_set_flip_vertically_on_load(true);
   glEnable(GL_DEPTH_TEST);
 
   // build and compile shader
@@ -115,7 +115,7 @@ int main(void){
   window.get_shader("screenshader")->setInt("screenTexture", 0);
 
   // load obj
-  ourModel = new Model("frame_1/untitled2.obj");
+  ourModel = new Model("frame_1/four_frames.obj");
 
   // run
   window.run();
