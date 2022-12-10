@@ -49,7 +49,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 1
-map_Kd monet.tga
+map_Kd la_nuite_etoilee.tga
 
 newmtl picture1.001
 Ns 10.000005
@@ -59,7 +59,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 1
-map_Kd piet.tga
+map_Kd wheatfields.tga
 
 newmtl picture1.002
 Ns 10.000005
@@ -69,7 +69,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 1
-map_Kd la_nuit_etoilee.tga
+map_Kd monet.tga
 
 newmtl picture1.003
 Ns 10.000005
@@ -79,4 +79,4 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 1
-map_Kd wheatfields.tga
+map_Kd piet.tga
