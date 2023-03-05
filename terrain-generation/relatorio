@@ -1,0 +1,22 @@
+- Explicar porque o Laplacian é uma medida isotrópica de derivadas espaciais 2d de uma imagem.
+- Derivar a 2 derivada de uma imagem no eixo dos xs e dos ys.
+- Calcular a Laplacian
+- Usar um mapa sintetico 3d
+- Implementar a laplacian no fragment shader
+- Renderizar a mesma cena 3d aplicando a Laplacian
+- Usar botoes para mover a camera e ativar e desativar o laplacian
+
+
+- Explicar a convolucao
+- Explicar a derivada do X e mostrar programa com esse efeito
+- Explicar a derivada do Y e mostrar programa com esse efeito
+- Mostrar a juncao das duas derivadas e mostrar programa com esse efeito
+
+
+- Explain why the Laplacian is an isotropic measure of the 2nd spatial derivative of
+an image:
+Isotropia é propriedade de um objeto ter o mesmo valor quando medido em direções diferentes. No contexto de processamento de imagem, um operador isotrópico é aquele que se aplica igualmente em todas as direções da imagem, sem nenhum viés para um determinado conjunto de direções.
+
+
+- Como chegaram aos valores do filtro.
+- Como relacionar o gaussian com o laplacian
