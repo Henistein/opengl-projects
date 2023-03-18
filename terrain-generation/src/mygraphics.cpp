@@ -19,7 +19,6 @@ void draw_cube(unsigned int *VBO, unsigned int *VAO){
 
 }
 
-
 void load_texture(unsigned int *textureID, char const *path)
 {
   glGenTextures(1, textureID);

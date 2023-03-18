@@ -30,8 +30,10 @@ float fov   =  45.0f;
 unsigned int texture;
 int numStrips;
 int numTrisPerStrip;
+const unsigned int NUM_PATCH_PTS = 4;
 // register VAO
 GLuint terrainVAO, terrainVBO, terrainEBO;
+GLuint VAO, VBO;
 
 /* Callbacks */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -50,34 +52,26 @@ void Window::refresh(void){
 
   glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glEnable(GL_DEPTH_TEST); 
 
   // activate shader
   this->shaders["shader"]->use();
+  this->shaders["tesselation"]->use();
 
   // model view projection
-  glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+  glm::mat4 model = glm::mat4(1.0f);
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
   glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 1000.0f);
 
-  this->shaders["shader"]->setMat4("model", model);
-  this->shaders["shader"]->setMat4("view", view);
-  this->shaders["shader"]->setMat4("projection", projection);
-
+  this->shaders["tesselation"]->setMat4("model", model);
+  this->shaders["tesselation"]->setMat4("view", view);
+  this->shaders["tesselation"]->setMat4("projection", projection);
 
   // bind Texture
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, texture);
-
+  // glActiveTexture(GL_TEXTURE0);
+  // glBindTexture(GL_TEXTURE_2D, texture);
+  // render the terrain
   glBindVertexArray(terrainVAO);
-  //        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  for (unsigned strip = 0; strip < numStrips; strip++)
-  {
-    glDrawElements(GL_TRIANGLE_STRIP,                                           // primitive type
-                   numTrisPerStrip + 2,                                         // number of indices to render
-                   GL_UNSIGNED_INT,                                             // index data type
-                   (void *)(sizeof(unsigned) * (numTrisPerStrip + 2) * strip)); // offset to starting index
-  }
+  glDrawArrays(GL_PATCHES, 0, NUM_PATCH_PTS * 20 * 20);
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -90,7 +84,6 @@ int main(void){
 
   // initialize window
   window.initialize(W_WIDTH, W_HEIGHT, "");
-  //glEnable(GL_TEXTURE_2D);
   glEnable(GL_DEPTH_TEST);
 
   // callbacks
@@ -102,73 +95,93 @@ int main(void){
 
   stbi_set_flip_vertically_on_load(true);
 
-  // load height map texture
+  GLint maxTessLevel;
+  glGetIntegerv(GL_MAX_TESS_GEN_LEVEL, &maxTessLevel);
+
+  // build and compile shader
+  window.add_shader("tesselation", new Shader("shader.vs", "shader.fs", nullptr, "tesselation.tcs", "tesselation.tes"));
+
+  unsigned int texture;
+  glGenTextures(1, &texture);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, texture); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
+  // set the texture wrapping parameters
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  // set texture filtering parameters
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  // load image, create texture and generate mipmaps
   int width, height, nrChannels;
-  unsigned char *data = stbi_load("assets/render_map.png",
-                                  &width, &height, &nrChannels, 0);
-
-  // vertex generation
-  std::vector<float> vertices;
-  float yScale = 64.0f / 256.0f, yShift = 16.0f;
-  int rez = 1;
-  unsigned bytePerPixel = nrChannels;
-  for (int i = 0; i < height; i++)
+  unsigned char *data = stbi_load("assets/render_map.png", &width, &height, &nrChannels, 0);
+  if (data)
   {
-    for (int j = 0; j < width; j++)
-    {
-      unsigned char *pixelOffset = data + (j + width * i) * bytePerPixel;
-      unsigned char y = pixelOffset[0];
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+      glGenerateMipmap(GL_TEXTURE_2D);
 
-      // vertex
-      vertices.push_back(-height / 2.0f + height * i / (float)height); // vx
-      vertices.push_back((int)y * yScale - yShift);                    // vy
-      vertices.push_back(-width / 2.0f + width * j / (float)width);    // vz
-    }
+      window.get_shader("tesselation")->setInt("heightMap", 0);
+      std::cout << "Loaded heightmap of size " << height << " x " << width << std::endl;
+  }
+  else
+  {
+      std::cout << "Failed to load texture" << std::endl;
   }
   stbi_image_free(data);
 
-  // index generation
-  std::vector<unsigned int> indices;
-  for (unsigned int i = 0; i < height - 1; i++){ // for each row a.k.a. each strip
-    for (unsigned int j = 0; j < width; j++){ // for each column
-      for (unsigned int k = 0; k < 2; k++){ // for each side of the strip
-        indices.push_back(j + width * (i + k));
+  // set up vertex data (and buffer(s)) and configure vertex attributes
+  // ------------------------------------------------------------------
+  std::vector<float> vertices;
+
+  unsigned rez = 20;
+  for (unsigned i = 0; i <= rez - 1; i++)
+  {
+      for (unsigned j = 0; j <= rez - 1; j++)
+      {
+        vertices.push_back(-width / 2.0f + width * i / (float)rez);   // v.x
+        vertices.push_back(0.0f);                                     // v.y
+        vertices.push_back(-height / 2.0f + height * j / (float)rez); // v.z
+        vertices.push_back(i / (float)rez);                           // u
+        vertices.push_back(j / (float)rez);                           // v
+
+        vertices.push_back(-width / 2.0f + width * (i + 1) / (float)rez); // v.x
+        vertices.push_back(0.0f);                                         // v.y
+        vertices.push_back(-height / 2.0f + height * j / (float)rez);     // v.z
+        vertices.push_back((i + 1) / (float)rez);                         // u
+        vertices.push_back(j / (float)rez);                               // v
+
+        vertices.push_back(-width / 2.0f + width * i / (float)rez);         // v.x
+        vertices.push_back(0.0f);                                           // v.y
+        vertices.push_back(-height / 2.0f + height * (j + 1) / (float)rez); // v.z
+        vertices.push_back(i / (float)rez);                                 // u
+        vertices.push_back((j + 1) / (float)rez);                           // v
+
+        vertices.push_back(-width / 2.0f + width * (i + 1) / (float)rez);   // v.x
+        vertices.push_back(0.0f);                                           // v.y
+        vertices.push_back(-height / 2.0f + height * (j + 1) / (float)rez); // v.z
+        vertices.push_back((i + 1) / (float)rez);                           // u
+        vertices.push_back((j + 1) / (float)rez);                           // v
       }
-    }
   }
+  std::cout << "Loaded " << rez * rez << " patches of 4 control points each" << std::endl;
+  std::cout << "Processing " << rez * rez * 4 << " vertices in vertex shader" << std::endl;
 
-  numStrips = (height-1);
-  numTrisPerStrip = width*2-2;
-
+  // first, configure the cube's VAO (and terrainVBO)
+  unsigned int terrainVAO, terrainVBO;
   glGenVertexArrays(1, &terrainVAO);
   glBindVertexArray(terrainVAO);
 
   glGenBuffers(1, &terrainVBO);
   glBindBuffer(GL_ARRAY_BUFFER, terrainVBO);
-  glBufferData(GL_ARRAY_BUFFER,
-               vertices.size() * sizeof(float), // size of vertices buffer
-               &vertices[0],                    // pointer to first element
-               GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
 
   // position attribute
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
   glEnableVertexAttribArray(0);
+  // texCoord attribute
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(sizeof(float) * 3));
+  glEnableVertexAttribArray(1);
 
-  glGenBuffers(1, &terrainEBO);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, terrainEBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-               indices.size() * sizeof(unsigned int), // size of indices buffer
-               &indices[0],                           // pointer to first element
-               GL_STATIC_DRAW);
-
-  //load_texture(&texture, "assets/grass.jpg");
-  load_texture(&texture, "assets/wall.jpg");
-
-  // build and compile shader
-  window.add_shader("shader", new Shader("shader.vs", "shader.fs"));
-
-  window.get_shader("shader")->use();
-  window.get_shader("shader")->setInt("texture1", 0);
+  glPatchParameteri(GL_PATCH_VERTICES, NUM_PATCH_PTS);
 
   // run
   window.run();

@@ -1,12 +1,11 @@
-#version 330 core
+#version 410 core
+
+in float Height;
+
 out vec4 FragColor;
-
-in vec2 TexCoord;
-
-// texture sampler
-uniform sampler2D texture1;
 
 void main()
 {
-	FragColor = texture(texture1, TexCoord);
+    float h = (Height + 16)/64.0f;
+    FragColor = vec4(h, h, h, 1.0);
 }
