@@ -9,6 +9,7 @@ uniform mat4 projection;
 in vec2 TextureCoord[];
 
 out float Height;
+out float Biome; // new output variable for biome
 
 void main()
 {
@@ -25,6 +26,20 @@ void main()
     vec2 texCoord = (t1 - t0) * v + t0;
 
     Height = texture(heightMap, texCoord).y * 64.0 - 16.0;
+
+    float height_norm = ((Height + 16)/64.0f);
+
+    if (height_norm < 0.1) {
+        Biome = 0; // Ocean
+    } else if (height_norm < 0.2) {
+        Biome = 1; // Beach
+    } else if (height_norm < 0.4) {
+        Biome = 2; // Forest
+    } else if (height_norm < 0.7) {
+        Biome = 3; // Mountain
+    } else {
+        Biome = 4; // Snow
+    }
 
     vec4 p00 = gl_in[0].gl_Position;
     vec4 p01 = gl_in[1].gl_Position;

@@ -54,17 +54,16 @@ void Window::refresh(void){
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // activate shader
-  this->shaders["shader"]->use();
   this->shaders["tesselation"]->use();
 
   // model view projection
-  glm::mat4 model = glm::mat4(1.0f);
+  glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 100000.0f);
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-  glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 1000.0f);
-
-  this->shaders["tesselation"]->setMat4("model", model);
-  this->shaders["tesselation"]->setMat4("view", view);
   this->shaders["tesselation"]->setMat4("projection", projection);
+  this->shaders["tesselation"]->setMat4("view", view);
+
+  glm::mat4 model = glm::mat4(1.0f);
+  this->shaders["tesselation"]->setMat4("model", model);
 
   // bind Texture
   // glActiveTexture(GL_TEXTURE0);
@@ -84,7 +83,6 @@ int main(void){
 
   // initialize window
   window.initialize(W_WIDTH, W_HEIGHT, "");
-  glEnable(GL_DEPTH_TEST);
 
   // callbacks
   glfwSetFramebufferSizeCallback(window.get_window(), framebuffer_size_callback);
@@ -97,6 +95,7 @@ int main(void){
 
   GLint maxTessLevel;
   glGetIntegerv(GL_MAX_TESS_GEN_LEVEL, &maxTessLevel);
+  glEnable(GL_DEPTH_TEST);
 
   // build and compile shader
   window.add_shader("tesselation", new Shader("shader.vs", "shader.fs", nullptr, "tesselation.tcs", "tesselation.tes"));
@@ -166,7 +165,6 @@ int main(void){
   std::cout << "Processing " << rez * rez * 4 << " vertices in vertex shader" << std::endl;
 
   // first, configure the cube's VAO (and terrainVBO)
-  unsigned int terrainVAO, terrainVBO;
   glGenVertexArrays(1, &terrainVAO);
   glBindVertexArray(terrainVAO);
 
@@ -196,7 +194,7 @@ void processInput(GLFWwindow *window){
     glfwSetWindowShouldClose(window, true);
   }
 
-  float cameraSpeed = static_cast<float>(2.5 * deltaTime);
+  float cameraSpeed = static_cast<float>(25 * deltaTime);
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     cameraPos += cameraSpeed * cameraFront;
   if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
