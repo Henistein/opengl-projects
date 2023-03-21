@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include <unistd.h>
 #include "window.hpp"
 #include "mygraphics.hpp"
 #include "model.h"
@@ -40,6 +41,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
+// options
+int OPT;
+bool TOGGLE;
 
 /* Main code */
 void Window::refresh(void){
@@ -56,6 +60,9 @@ void Window::refresh(void){
   // activate shader
   this->shaders["tesselation"]->use();
 
+  // send option
+  this->shaders["tesselation"]->setInt("option", OPT);
+
   // model view projection
   glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 100000.0f);
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
@@ -65,9 +72,12 @@ void Window::refresh(void){
   glm::mat4 model = glm::mat4(1.0f);
   this->shaders["tesselation"]->setMat4("model", model);
 
-  // bind Texture
-  // glActiveTexture(GL_TEXTURE0);
-  // glBindTexture(GL_TEXTURE_2D, texture);
+  if(TOGGLE){
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  }
+  else{
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  }
   // render the terrain
   glBindVertexArray(terrainVAO);
   glDrawArrays(GL_PATCHES, 0, NUM_PATCH_PTS * 20 * 20);
@@ -203,6 +213,23 @@ void processInput(GLFWwindow *window){
     cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
   if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+
+  // options
+  if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+    OPT = 0;
+  if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+    OPT = 1;
+  if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+    OPT = 2;
+  
+  // toggle
+  if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS){
+    TOGGLE = true;
+  }
+  if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS){
+    TOGGLE = false;
+  }
+
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {

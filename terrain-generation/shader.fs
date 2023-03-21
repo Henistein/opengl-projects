@@ -1,48 +1,74 @@
 #version 410 core
 
 in float Height;
-in float Biome;
+in vec2 TexCoord;
+uniform int option;
 
 out vec4 FragColor;
 
+vec4 biome_summer(float h){
+    vec4 color;
+    if (h < 0.1) {
+        color = vec4(0.0, 0.0, h * 5.0+0.2, 1.0); // water
+    } else if (h < 0.11) {
+        color = vec4(h * 5.0, h * 5.0, 0.0, 1.0); // sand
+    } else if (h < 0.2) {
+        color = vec4(0.0, h * 3.0, 0.0, 1.0); // grassland
+    } else if (h < 0.5) {
+        color = vec4(h*0.7, h*0.7, h*0.7, 1.0); // rock/mountain
+    } else {
+        color = vec4(1.0, 1.0, 1.0, 1.0); // snow
+    }
+    return color;
+}
+
+vec4 biome_autumn(float h){
+    vec4 color;
+    if (h < 0.1) {
+        color = vec4(0.0, 0.0, h * 5.0+0.2, 1.0); // water
+    } else if (h < 0.11) {
+        color = vec4(h * 5.0, h * 5.0, 0.0, 1.0); // sand
+    } else if (h < 0.2) {
+        color = vec4(h*0.9*5, h*0.4*5, 0.0, 1.0); // orange-brown soil
+    } else if (h < 0.5) {
+        color = vec4(h * 0.9, h * 0.6, 0.0, 1.0); // autumn leaves on ground
+    } else {
+        color = vec4(0.8, 0.8, 0.8, 1.0); // rock/mountain
+    }
+    return color;
+}
+
+vec4 biome_tundra(float h){
+    vec4 color;
+    if (h < 0.1) {
+        color = vec4(0.6, 0.8, 0.9, 1.0) * (h * 5.0 + 0.2); // light blue sea/ice
+    } else if (h < 0.2) {
+        color = vec4(0.7, 0.8, 0.9, 1.0) * (h * 5.0 + 0.2); // light blue-gray soil
+    } else if (h < 0.5) {
+        color = vec4(0.8, 0.9, 1.0, 1.0) * (h * 1.5); // light gray-blue rock/mountain
+    } else if (h < 0.55) {
+        color = vec4(0.8, 0.8, 0.8, 1.0) * (h * 10.0); // light gray snow
+    } else {
+        color = vec4(1.0, 1.0, 1.0, 1.0) * (h * 10.0); // white snow
+    }
+    return color;
+}
+
 void main()
 {
-    /*
+    float h = (Height + 16)/64.0f;
+
     vec4 color;
-    if (Biome == 0) {
-        color = vec4(0.0, 0.0, 1.0, 1.0); // blue for ocean
-    } else if (Biome == 1) {
-        color = vec4(1.0, 1.0, 0.0, 1.0); // yellow for beach
-    } else if (Biome == 2) {
-        color = vec4(0.0, 1.0, 0.0, 1.0); // green for forest
-    } else if (Biome == 3) {
-        color = vec4(0.5, 0.5, 0.5, 1.0); // gray for mountain
-    } else {
-        color = vec4(1.0, 1.0, 1.0, 1.0); // white for snow
+    if(option == 0){
+        color = biome_summer(h);
     }
-    */
-
-    //float h = (Height + 16)/64.0f;
-    //FragColor = vec4(h, h, h, 1.0);
-    float OceanHeight = -16.0;
-    float SnowHeight = 48.0;
-    float BiomeFactor = (Height - OceanHeight) / (SnowHeight - OceanHeight);
-
-    // Compute biome
-    float Biome = mix(0.0, 4.0, BiomeFactor);
-
-    // Compute color based on biome
-    vec3 color;
-    if (Biome < 1.0) {
-        color = vec3(0.0, 0.0, 1.0); // blue for ocean
-    } else if (Biome < 2.0) {
-        color = vec3(1.0, 1.0, 0.0); // yellow for beach
-    } else if (Biome < 3.0) {
-        color = vec3(0.0, 1.0, 0.0); // green for forest
-    } else if (Biome < 4.0) {
-        color = vec3(0.5, 0.5, 0.5); // gray for mountain
-    } else {
-        color = vec3(1.0, 1.0, 1.0); // white for snow
+    else if(option == 1){
+        color = biome_autumn(h);
     }
-    FragColor = vec4(color, 1.0);
+    else{
+        color = biome_tundra(h);
+    }
+
+
+    FragColor = color;
 }
