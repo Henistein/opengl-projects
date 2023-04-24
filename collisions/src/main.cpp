@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include <unistd.h>
 #include "window.hpp"
 #include "mygraphics.hpp"
+#include "model.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -27,26 +27,23 @@ float lastX =  800.0f / 2.0;
 float lastY =  600.0 / 2.0;
 float fov   =  45.0f;
 
-unsigned int texture;
-int numStrips;
-int numTrisPerStrip;
-const unsigned int NUM_PATCH_PTS = 4;
-// register VAO
-GLuint terrainVAO, terrainVBO, terrainEBO;
-GLuint VAO, VBO;
+// options
+int option;
+
+// model obj
+Model *obj1, *obj2;
+glm::vec3 obj1_pos = glm::vec3(0.0f, 0.0f, -5.0f);
+glm::vec3 obj2_pos = glm::vec3(0.0f, 0.0f, 0.0f);
 
 /* Callbacks */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
-// options
-int OPT;
-bool TOGGLE;
 
 /* Main code */
 void Window::refresh(void){
-   // frame time logic
+  // frame time logic
   float currentFrame = static_cast<float>(glfwGetTime());
   deltaTime = currentFrame - lastFrame;
   lastFrame = currentFrame;
@@ -54,30 +51,30 @@ void Window::refresh(void){
   processInput(this->window);
 
   glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  // bind Texture
-  glBindTexture(GL_TEXTURE_2D, texture);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // activate shader
-  this->shader->use();
+  this->shaders["shader_obj1"]->use();
+  this->shaders["shader_obj2"]->use();
 
-  // pass projection matrix to shader (note that in this case it could change every frame)
-  glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 100.0f);
-  this->shader->setMat4("projection", projection);
-
-  // camera/view transformation
-  glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-  this->shader->setMat4("view", view);
-
-  // render container
-  glBindVertexArray(VAO);
-
-  // model matrix
+  // model view projection
   glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-  this->shader->setMat4("model", model);// calculate the model matrix for each object and pass it to shader before drawing
+  glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+  glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 1000.0f);
 
-  glDrawArrays(GL_TRIANGLES, 0, 36);
+  // apply translate to obj1 and obj2
+  glm::mat4 model1 = glm::translate(model, obj1_pos);
+  glm::mat4 model2 = glm::translate(model, obj2_pos);
+
+  this->shaders["shader_obj1"]->setMat4("model", model1);
+  this->shaders["shader_obj1"]->setMat4("view", view);
+  this->shaders["shader_obj1"]->setMat4("projection", projection);
+  obj1->Draw(*this->shaders["shader_obj1"]);
+
+  this->shaders["shader_obj2"]->setMat4("model", model2);
+  this->shaders["shader_obj2"]->setMat4("view", view);
+  this->shaders["shader_obj2"]->setMat4("projection", projection);
+  obj2->Draw(*this->shaders["shader_obj2"]);
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -97,19 +94,24 @@ int main(void){
   // tell GLFW to capture our mouse
   glfwSetInputMode(window.get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-  // build and compile shader
-  Shader shader("shader.vs", "shader.fs"); 
-  window.add_shader(&shader);
+  //stbi_set_flip_vertically_on_load(true);
+  glEnable(GL_DEPTH_TEST);
 
-  draw_cube(&VBO, &VAO);
-  create_texture(&texture, "assets/wall.jpg");
+  // build and compile shader
+  window.add_shader("shader_obj1", new Shader("shader.vs", "shader.fs"));
+  window.add_shader("shader_obj2", new Shader("shader.vs", "shader.fs"));
+
+  window.get_shader("shader_obj1")->use();
+  window.get_shader("shader_obj1")->setInt("texture1", 0);
+  window.get_shader("shader_obj2")->use();
+  window.get_shader("shader_obj2")->setInt("texture1", 0);
+
+  // load obj
+  obj1 = new Model("assets/blue_car.fbx");
+  obj2 = new Model("assets/white_car.fbx");
 
   // run
   window.run();
-
-  glDeleteVertexArrays(1, &VAO);
-  glDeleteBuffers(1, &VBO);
-  glDeleteBuffers(1, &EBO);
 
   return 0;
 }
@@ -121,7 +123,7 @@ void processInput(GLFWwindow *window){
     glfwSetWindowShouldClose(window, true);
   }
 
-  float cameraSpeed = static_cast<float>(25 * deltaTime);
+  float cameraSpeed = static_cast<float>(2.5 * deltaTime);
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     cameraPos += cameraSpeed * cameraFront;
   if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -130,23 +132,11 @@ void processInput(GLFWwindow *window){
     cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
   if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-
   // options
-  if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-    OPT = 0;
-  if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-    OPT = 1;
-  if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-    OPT = 2;
-  if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-    OPT = 3;
-  
-  // toggle
-  if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-    TOGGLE = true;
-  if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-    TOGGLE = false;
-
+  if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
+    obj1_pos.z += 0.1f;
+  if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+    obj1_pos.z -= 0.1f;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
