@@ -32,17 +32,109 @@ int option;
 
 // model obj
 std::vector<Model> objects;
-
 std::vector<glm::vec3> objects_pos = {
     glm::vec3(0.0f, 0.0f, -5.0f),
     glm::vec3(0.0f, 0.0f, 0.0f)
 };
+GLuint VAO[2];
+GLuint VBO[2];
+GLuint EBO[2];
 
 /* Callbacks */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
+
+/* Auxiliar functions */
+std::pair<glm::vec3, glm::vec3> get_mesh_min_max_coord(Mesh mesh){
+  glm::vec3 minExtents(FLT_MAX);
+  glm::vec3 maxExtents(-FLT_MAX);
+
+  // Iterate over all vertices in the mesh
+  for (unsigned int i = 0; i < mesh.vertices.size(); i++){
+    // Update minimum and maximum extents for each dimension
+    if (mesh.vertices[i].Position.x < minExtents.x){
+      minExtents.x = mesh.vertices[i].Position.x;
+    }
+    if (mesh.vertices[i].Position.y < minExtents.y){
+      minExtents.y = mesh.vertices[i].Position.y;
+    }
+    if (mesh.vertices[i].Position.z < minExtents.z){
+      minExtents.z = mesh.vertices[i].Position.z;
+    }
+
+    if (mesh.vertices[i].Position.x > maxExtents.x){
+      maxExtents.x = mesh.vertices[i].Position.x;
+    }
+    if (mesh.vertices[i].Position.y > maxExtents.y){
+      maxExtents.y = mesh.vertices[i].Position.y;
+    }
+    if (mesh.vertices[i].Position.z > maxExtents.z){
+      maxExtents.z = mesh.vertices[i].Position.z;
+    }
+  }
+  return std::make_pair(minExtents, maxExtents);
+}
+
+std::vector<glm::vec3> create_aabb(glm::vec3 min_extents, glm::vec3 max_extents) {
+  std::vector<glm::vec3> vertices;
+
+  // calculate the eight vertices of the box
+  glm::vec3 v0 = glm::vec3(min_extents.x, min_extents.y, min_extents.z);
+  glm::vec3 v1 = glm::vec3(max_extents.x, min_extents.y, min_extents.z);
+  glm::vec3 v2 = glm::vec3(max_extents.x, min_extents.y, max_extents.z);
+  glm::vec3 v3 = glm::vec3(min_extents.x, min_extents.y, max_extents.z);
+  glm::vec3 v4 = glm::vec3(min_extents.x, max_extents.y, min_extents.z);
+  glm::vec3 v5 = glm::vec3(max_extents.x, max_extents.y, min_extents.z);
+  glm::vec3 v6 = glm::vec3(max_extents.x, max_extents.y, max_extents.z);
+  glm::vec3 v7 = glm::vec3(min_extents.x, max_extents.y, max_extents.z);
+
+  // add the vertices to the vector
+  vertices.push_back(v0);
+  vertices.push_back(v1);
+  vertices.push_back(v2);
+  vertices.push_back(v3);
+  vertices.push_back(v4);
+  vertices.push_back(v5);
+  vertices.push_back(v6);
+  vertices.push_back(v7);
+
+  return vertices;
+}
+
+void draw_bbox(glm::vec3 minExtents, glm::vec3 maxExtents, GLuint *VAO, GLuint *VBO, GLuint *EBO) {
+  // create bounding box vertices
+  std::vector<glm::vec3> bb_vertices = {
+    glm::vec3(minExtents.x, minExtents.y, minExtents.z),
+    glm::vec3(maxExtents.x, minExtents.y, minExtents.z),
+    glm::vec3(maxExtents.x, maxExtents.y, minExtents.z),
+    glm::vec3(minExtents.x, maxExtents.y, minExtents.z),
+    glm::vec3(minExtents.x, minExtents.y, maxExtents.z),
+    glm::vec3(maxExtents.x, minExtents.y, maxExtents.z),
+    glm::vec3(maxExtents.x, maxExtents.y, maxExtents.z),
+    glm::vec3(minExtents.x, maxExtents.y, maxExtents.z)
+  };
+
+  // Generate and bind VAO, VBO, and EBO
+  glGenVertexArrays(1, VAO);
+  glGenBuffers(1, VBO);
+  glGenBuffers(1, EBO);
+  glBindVertexArray(*VAO);
+  glBindBuffer(GL_ARRAY_BUFFER, *VBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
+
+  // Pass vertex and index data to VBO and EBO
+  glBufferData(GL_ARRAY_BUFFER, bb_vertices.size() * sizeof(glm::vec3), &bb_vertices[0], GL_STATIC_DRAW);
+  //glBufferData(GL_ELEMENT_ARRAY_BUFFER, bbIndices.size() * sizeof(unsigned int), &bb_indices[0], GL_STATIC_DRAW);
+
+  // Set vertex attribute pointers
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+  glEnableVertexAttribArray(0);
+
+}
+
+
 
 /* Main code */
 void Window::refresh(void){
@@ -75,6 +167,11 @@ void Window::refresh(void){
     objects[i].Draw(*this->shaders[i]);
 
   }
+
+  glBindVertexArray(VAO[0]);
+
+  // draw bboxes
+  glDrawArrays(GL_LINES, 0, 24);
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -109,6 +206,14 @@ int main(void){
   // load objs
   objects.push_back(Model("assets/blue_car.fbx"));
   objects.push_back(Model("assets/white_car.fbx"));
+
+  // TODO: temp
+  std::pair<glm::vec3, glm::vec3> p = get_mesh_min_max_coord(objects[0].meshes[0]);
+  glm::vec3 min_extents = p.first;
+  glm::vec3 max_extents = p.second;
+  draw_bbox(min_extents, max_extents, &VAO[0], &VBO[0], &EBO[0]);
+  //std::vector<glm::vec3> bb_vertices = create_aabb(min_extents, max_extents);
+
 
   // run
   window.run();
