@@ -10,8 +10,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <shader_m.h>
 
-#include <map>
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -38,7 +38,7 @@ private:
   GLFWscrollfun          scroll_callback           = nullptr;
 
   /* Shaders */
-  map<string, Shader*> shaders;
+  std::vector<Shader*> shaders;
 
   void init_glfw(void);
   int  init_glad(void);
@@ -57,13 +57,14 @@ public:
   virtual void refresh(void);
 
   /* Shader */
-  void add_shader(string, Shader*);
+  void add_shader(Shader*);
 
   Window(){};
   ~Window() {this->finalize();};
 
   /* Properties */
   GLFWwindow *get_window(void);
-  Shader *get_shader(string);
+  Shader *get_shader(int);
+  long unsigned int get_shader_size(void);
 
 };

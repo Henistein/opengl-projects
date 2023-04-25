@@ -31,9 +31,12 @@ float fov   =  45.0f;
 int option;
 
 // model obj
-Model *obj1, *obj2;
-glm::vec3 obj1_pos = glm::vec3(0.0f, 0.0f, -5.0f);
-glm::vec3 obj2_pos = glm::vec3(0.0f, 0.0f, 0.0f);
+std::vector<Model> objects;
+
+std::vector<glm::vec3> objects_pos = {
+    glm::vec3(0.0f, 0.0f, -5.0f),
+    glm::vec3(0.0f, 0.0f, 0.0f)
+};
 
 /* Callbacks */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -54,27 +57,24 @@ void Window::refresh(void){
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // activate shader
-  this->shaders["shader_obj1"]->use();
-  this->shaders["shader_obj2"]->use();
+  for(long unsigned int i=0; i<this->shaders.size(); i++){
+    this->shaders[i]->use();
+  }
 
   // model view projection
   glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
   glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 1000.0f);
 
-  // apply translate to obj1 and obj2
-  glm::mat4 model1 = glm::translate(model, obj1_pos);
-  glm::mat4 model2 = glm::translate(model, obj2_pos);
+  // apply translate to each object
+  for(long unsigned int i=0; i<this->shaders.size(); i++){
+    glm::mat4 aux_model = glm::translate(model, objects_pos[i]);
+    this->shaders[i]->setMat4("model", aux_model);
+    this->shaders[i]->setMat4("view", view);
+    this->shaders[i]->setMat4("projection", projection);
+    objects[i].Draw(*this->shaders[i]);
 
-  this->shaders["shader_obj1"]->setMat4("model", model1);
-  this->shaders["shader_obj1"]->setMat4("view", view);
-  this->shaders["shader_obj1"]->setMat4("projection", projection);
-  obj1->Draw(*this->shaders["shader_obj1"]);
-
-  this->shaders["shader_obj2"]->setMat4("model", model2);
-  this->shaders["shader_obj2"]->setMat4("view", view);
-  this->shaders["shader_obj2"]->setMat4("projection", projection);
-  obj2->Draw(*this->shaders["shader_obj2"]);
+  }
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -97,18 +97,18 @@ int main(void){
   //stbi_set_flip_vertically_on_load(true);
   glEnable(GL_DEPTH_TEST);
 
-  // build and compile shader
-  window.add_shader("shader_obj1", new Shader("shader.vs", "shader.fs"));
-  window.add_shader("shader_obj2", new Shader("shader.vs", "shader.fs"));
+  // build and compile shaders
+  window.add_shader(new Shader("shader.vs", "shader.fs"));
+  window.add_shader(new Shader("shader.vs", "shader.fs"));
 
-  window.get_shader("shader_obj1")->use();
-  window.get_shader("shader_obj1")->setInt("texture1", 0);
-  window.get_shader("shader_obj2")->use();
-  window.get_shader("shader_obj2")->setInt("texture1", 0);
+  for(long unsigned int i=0; i<window.get_shader_size(); i++){
+    window.get_shader(i)->use();
+    window.get_shader(i)->setInt("texture1", 0);
+  }
 
-  // load obj
-  obj1 = new Model("assets/blue_car.fbx");
-  obj2 = new Model("assets/white_car.fbx");
+  // load objs
+  objects.push_back(Model("assets/blue_car.fbx"));
+  objects.push_back(Model("assets/white_car.fbx"));
 
   // run
   window.run();
@@ -134,9 +134,9 @@ void processInput(GLFWwindow *window){
     cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
   // options
   if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
-    obj1_pos.z += 0.1f;
+    objects_pos[0].z += 0.1f;
   if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
-    obj1_pos.z -= 0.1f;
+    objects_pos[0].z -= 0.1f;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {

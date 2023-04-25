@@ -50,14 +50,18 @@ void Window::finalize(void){
   glfwTerminate();
 }
 
-void Window::add_shader(string name, Shader *shader){
-  this->shaders[name] = shader;
+void Window::add_shader(Shader *shader){
+  this->shaders.push_back(shader);
 }
 
 GLFWwindow *Window::get_window(void){
   return this->window;
 }
 
-Shader *Window::get_shader(string name){
-  return this->shaders[name];
+Shader *Window::get_shader(int index){
+  return this->shaders[index];
+}
+
+long unsigned int Window::get_shader_size(void){
+  return this->shaders.size();
 }
