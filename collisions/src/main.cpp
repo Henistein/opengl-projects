@@ -31,12 +31,11 @@ float fov   =  45.0f;
 /* OBJECTS */
 std::string objects_path[] = {
   "assets/blue_car.fbx", 
-  //"assets/white_car.fbx"
+  "assets/white_car.fbx"
 };
-// model obj
 std::vector<Model> objects;
 std::vector<glm::vec3> objects_pos = {
-    //glm::vec3(0.0f, 0.0f, -5.0f),
+    glm::vec3(0.0f, 0.0f, -5.0f),
     glm::vec3(0.0f, 0.0f, 0.0f)
 };
 GLuint VAO[2];
@@ -137,7 +136,6 @@ void draw_bbox(glm::vec3 minExtents, glm::vec3 maxExtents, GLuint *VAO, GLuint *
   // Pass vertex and index data to VBO and EBO
   glBufferData(GL_ARRAY_BUFFER, bb_vertices.size() * sizeof(glm::vec3), &bb_vertices[0], GL_STATIC_DRAW);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices[0], GL_STATIC_DRAW);
-  //std::cout << sizeof(indices) << std::endl;
 
   // Set vertex attribute pointers
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
@@ -158,7 +156,6 @@ void Window::refresh(void){
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // activate shader
-  //for(long unsigned int i=0; i<this->shaders.size(); i++){}
   this->shaders[0]->use();
 
   // model view projection
@@ -177,7 +174,6 @@ void Window::refresh(void){
     // draw bboxes
     glBindVertexArray(VAO[i]);
     glLineWidth(3.0f);
-    //glDrawElements(GL_LINES, 144/sizeof(GL_UNSIGNED_INT), GL_UNSIGNED_INT, 0);
     glDrawElements(GL_LINES, 36, GL_UNSIGNED_INT, 0);
   }
 
@@ -203,32 +199,23 @@ int main(void){
   //stbi_set_flip_vertically_on_load(true);
   glEnable(GL_DEPTH_TEST);
 
-
   // build and compile shaders
   window.add_shader(new Shader("shader.vs", "shader.fs"));
-  //window.add_shader(new Shader("shader.vs", "shader.fs"));
-
   window.get_shader(0)->use();
   window.get_shader(0)->setInt("texture1", 0);
-  /*
-  for(long unsigned int i=0; i<window.get_shader_size(); i++){
-    window.get_shader(i)->use();
-    window.get_shader(i)->setInt("texture1", 0);
-  }
-  */
 
   // load objs
-  for(int i = 0; i < sizeof(objects_path) / sizeof(objects_path[0]); i++) {
+  for(unsigned long int i=0; i<sizeof(objects_path) / sizeof(objects_path[0]); i++) {
     objects.push_back(Model(objects_path[i]));
   }
 
-  // TODO: temp
-  std::pair<glm::vec3, glm::vec3> p = get_mesh_min_max_coord(objects[0].meshes[0]);
-  glm::vec3 min_extents = p.first;
-  glm::vec3 max_extents = p.second;
-  draw_bbox(min_extents, max_extents, &VAO[0], &VBO[0], &EBO[0]);
-  //std::vector<glm::vec3> bb_vertices = create_aabb(min_extents, max_extents);
-
+  // create bbox VAO, VBO and EBO for each obj
+  for(unsigned long int i=0; i<objects.size(); i++){
+    std::pair<glm::vec3, glm::vec3> p = get_mesh_min_max_coord(objects[i].meshes[0]);
+    glm::vec3 min_extents = p.first;
+    glm::vec3 max_extents = p.second;
+    draw_bbox(min_extents, max_extents, &VAO[i], &VBO[i], &EBO[i]);
+  }
 
   // run
   window.run();
