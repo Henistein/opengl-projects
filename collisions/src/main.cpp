@@ -27,13 +27,16 @@ float lastX =  800.0f / 2.0;
 float lastY =  600.0 / 2.0;
 float fov   =  45.0f;
 
-// options
-int option;
 
+/* OBJECTS */
+std::string objects_path[] = {
+  "assets/blue_car.fbx", 
+  //"assets/white_car.fbx"
+};
 // model obj
 std::vector<Model> objects;
 std::vector<glm::vec3> objects_pos = {
-    glm::vec3(0.0f, 0.0f, -5.0f),
+    //glm::vec3(0.0f, 0.0f, -5.0f),
     glm::vec3(0.0f, 0.0f, 0.0f)
 };
 GLuint VAO[2];
@@ -116,6 +119,13 @@ void draw_bbox(glm::vec3 minExtents, glm::vec3 maxExtents, GLuint *VAO, GLuint *
     glm::vec3(minExtents.x, maxExtents.y, maxExtents.z)
   };
 
+  unsigned int indices[] = {
+    0, 1, 1, 2, 2, 3, 3, 0,
+    3, 2, 2, 6, 6, 7, 7, 3,
+    7, 6, 6, 5, 5, 4, 4, 7,
+    4, 0, 0, 3, 1, 5, 2, 6
+  };
+
   // Generate and bind VAO, VBO, and EBO
   glGenVertexArrays(1, VAO);
   glGenBuffers(1, VBO);
@@ -126,15 +136,14 @@ void draw_bbox(glm::vec3 minExtents, glm::vec3 maxExtents, GLuint *VAO, GLuint *
 
   // Pass vertex and index data to VBO and EBO
   glBufferData(GL_ARRAY_BUFFER, bb_vertices.size() * sizeof(glm::vec3), &bb_vertices[0], GL_STATIC_DRAW);
-  //glBufferData(GL_ELEMENT_ARRAY_BUFFER, bbIndices.size() * sizeof(unsigned int), &bb_indices[0], GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices[0], GL_STATIC_DRAW);
+  //std::cout << sizeof(indices) << std::endl;
 
   // Set vertex attribute pointers
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
   glEnableVertexAttribArray(0);
 
 }
-
-
 
 /* Main code */
 void Window::refresh(void){
@@ -149,29 +158,29 @@ void Window::refresh(void){
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // activate shader
-  for(long unsigned int i=0; i<this->shaders.size(); i++){
-    this->shaders[i]->use();
-  }
+  //for(long unsigned int i=0; i<this->shaders.size(); i++){}
+  this->shaders[0]->use();
 
   // model view projection
   glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
   glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 1000.0f);
 
-  // apply translate to each object
-  for(long unsigned int i=0; i<this->shaders.size(); i++){
+  // pass model view projection at each obj and bbox
+  for(long unsigned int i=0; i<objects_pos.size(); i++){
     glm::mat4 aux_model = glm::translate(model, objects_pos[i]);
-    this->shaders[i]->setMat4("model", aux_model);
-    this->shaders[i]->setMat4("view", view);
-    this->shaders[i]->setMat4("projection", projection);
-    objects[i].Draw(*this->shaders[i]);
+    this->shaders[0]->setMat4("model", aux_model);
+    this->shaders[0]->setMat4("view", view);
+    this->shaders[0]->setMat4("projection", projection);
+    objects[i].Draw(*this->shaders[0]);
 
+    // draw bboxes
+    glBindVertexArray(VAO[i]);
+    glLineWidth(3.0f);
+    //glDrawElements(GL_LINES, 144/sizeof(GL_UNSIGNED_INT), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_LINES, 36, GL_UNSIGNED_INT, 0);
   }
 
-  glBindVertexArray(VAO[0]);
-
-  // draw bboxes
-  glDrawArrays(GL_LINES, 0, 24);
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -194,18 +203,24 @@ int main(void){
   //stbi_set_flip_vertically_on_load(true);
   glEnable(GL_DEPTH_TEST);
 
+
   // build and compile shaders
   window.add_shader(new Shader("shader.vs", "shader.fs"));
-  window.add_shader(new Shader("shader.vs", "shader.fs"));
+  //window.add_shader(new Shader("shader.vs", "shader.fs"));
 
+  window.get_shader(0)->use();
+  window.get_shader(0)->setInt("texture1", 0);
+  /*
   for(long unsigned int i=0; i<window.get_shader_size(); i++){
     window.get_shader(i)->use();
     window.get_shader(i)->setInt("texture1", 0);
   }
+  */
 
   // load objs
-  objects.push_back(Model("assets/blue_car.fbx"));
-  objects.push_back(Model("assets/white_car.fbx"));
+  for(int i = 0; i < sizeof(objects_path) / sizeof(objects_path[0]); i++) {
+    objects.push_back(Model(objects_path[i]));
+  }
 
   // TODO: temp
   std::pair<glm::vec3, glm::vec3> p = get_mesh_min_max_coord(objects[0].meshes[0]);
