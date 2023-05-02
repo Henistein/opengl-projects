@@ -35,12 +35,18 @@ std::string objects_path[] = {
 };
 std::vector<Model> objects;
 std::vector<glm::vec3> objects_pos = {
-    glm::vec3(0.0f, 0.0f, -5.0f),
+    glm::vec3(0.0f, 0.0f, 0.0f),
     glm::vec3(0.0f, 0.0f, 0.0f)
 };
 GLuint VAO[2];
 GLuint VBO[2];
 GLuint EBO[2];
+
+struct bbox {
+  glm::vec3 min_extents;
+  glm::vec3 max_extents;
+};
+std::vector<bbox> bounding_boxes;
 
 /* Callbacks */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -49,7 +55,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
 /* Auxiliar functions */
-std::pair<glm::vec3, glm::vec3> get_mesh_min_max_coord(Mesh mesh){
+struct bbox get_mesh_min_max_coord(Mesh mesh){
   glm::vec3 minExtents(FLT_MAX);
   glm::vec3 maxExtents(-FLT_MAX);
 
@@ -76,7 +82,7 @@ std::pair<glm::vec3, glm::vec3> get_mesh_min_max_coord(Mesh mesh){
       maxExtents.z = mesh.vertices[i].Position.z;
     }
   }
-  return std::make_pair(minExtents, maxExtents);
+  return {minExtents, maxExtents};
 }
 
 std::vector<glm::vec3> create_aabb(glm::vec3 min_extents, glm::vec3 max_extents) {
@@ -143,6 +149,27 @@ void draw_bbox(glm::vec3 minExtents, glm::vec3 maxExtents, GLuint *VAO, GLuint *
 
 }
 
+/*
+bool checkCollision(struct bbox bbox1, struct bbox bbox2) {
+  bool x_overlap = bbox1.max_extents.x >= bbox2.min_extents.x && bbox2.max_extents.x >= bbox1.min_extents.x;
+  bool y_overlap = bbox1.max_extents.y >= bbox2.min_extents.y && bbox2.max_extents.y >= bbox1.min_extents.y;
+  bool z_overlap = bbox1.max_extents.z >= bbox2.min_extents.z && bbox2.max_extents.z >= bbox1.min_extents.z;
+  return x_overlap && y_overlap && z_overlap;
+}
+*/
+
+bool checkCollision(struct bbox bbox1, struct bbox bbox2) {
+  // verifies if x coordinates of both hitboxes hit
+  bool collisionX = bbox1.min_extents.x <= bbox2.max_extents.x && bbox1.max_extents.x >= bbox2.min_extents.x;
+  // verifies if y coordinates of both hitboxes hit
+  bool collisionY = bbox1.min_extents.y <= bbox2.max_extents.y && bbox1.max_extents.y >= bbox2.min_extents.y;
+  // verifies if z coordinates of both hitboxes hit
+  bool collisionZ = bbox1.min_extents.z <= bbox2.max_extents.z && bbox1.max_extents.z >= bbox2.min_extents.z;
+
+  return collisionX && collisionY && collisionZ;
+}
+
+
 /* Main code */
 void Window::refresh(void){
   // frame time logic
@@ -155,28 +182,53 @@ void Window::refresh(void){
   glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // activate shader
-  this->shaders[0]->use();
-
   // model view projection
   glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
   glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 1000.0f);
 
+
   // pass model view projection at each obj and bbox
   for(long unsigned int i=0; i<objects_pos.size(); i++){
     glm::mat4 aux_model = glm::translate(model, objects_pos[i]);
+    // activate objs shader
+    this->shaders[0]->use();
     this->shaders[0]->setMat4("model", aux_model);
     this->shaders[0]->setMat4("view", view);
     this->shaders[0]->setMat4("projection", projection);
+    // draw objs
     objects[i].Draw(*this->shaders[0]);
 
+    // update bboxes
+    for(unsigned long int i=0; i<objects.size(); i++){
+      struct bbox aux = get_mesh_min_max_coord(objects[i].meshes[0]);
+      draw_bbox(aux.min_extents, aux.max_extents, &VAO[i], &VBO[i], &EBO[i]);
+      // add pos
+      aux.max_extents += objects_pos[i];
+      aux.min_extents += objects_pos[i];
+      // save obj bbox
+      bounding_boxes[i] = aux;
+    }
+
+    // activate bbox shader
+    this->shaders[1]->use();
+    this->shaders[1]->setMat4("model", aux_model);
+    this->shaders[1]->setMat4("view", view);
+    this->shaders[1]->setMat4("projection", projection);
     // draw bboxes
     glBindVertexArray(VAO[i]);
     glLineWidth(3.0f);
     glDrawElements(GL_LINES, 36, GL_UNSIGNED_INT, 0);
   }
 
+  // Check collisions (broad phase)
+  if(checkCollision(bounding_boxes[0], bounding_boxes[1])){
+    std::cout << "Collision detected" << std::endl;
+    this->shaders[1]->setVec4("color", glm::vec4(1.0f, 0.0f, 0.0f, 0.5f));
+  }
+  else{
+    this->shaders[1]->setVec4("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.5f));
+  }
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -201,8 +253,7 @@ int main(void){
 
   // build and compile shaders
   window.add_shader(new Shader("shader.vs", "shader.fs"));
-  window.get_shader(0)->use();
-  window.get_shader(0)->setInt("texture1", 0);
+  window.add_shader(new Shader("bbox.vs", "bbox.fs"));
 
   // load objs
   for(unsigned long int i=0; i<sizeof(objects_path) / sizeof(objects_path[0]); i++) {
@@ -211,10 +262,13 @@ int main(void){
 
   // create bbox VAO, VBO and EBO for each obj
   for(unsigned long int i=0; i<objects.size(); i++){
-    std::pair<glm::vec3, glm::vec3> p = get_mesh_min_max_coord(objects[i].meshes[0]);
-    glm::vec3 min_extents = p.first;
-    glm::vec3 max_extents = p.second;
-    draw_bbox(min_extents, max_extents, &VAO[i], &VBO[i], &EBO[i]);
+    struct bbox aux = get_mesh_min_max_coord(objects[i].meshes[0]);
+    draw_bbox(aux.min_extents, aux.max_extents, &VAO[i], &VBO[i], &EBO[i]);
+    // add pos
+    aux.max_extents += objects_pos[i];
+    aux.min_extents += objects_pos[i];
+    // save obj bbox
+    bounding_boxes.push_back(aux);
   }
 
   // run
@@ -240,10 +294,16 @@ void processInput(GLFWwindow *window){
   if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
   // options
-  if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
-    objects_pos[0].z += 0.1f;
-  if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
-    objects_pos[0].z -= 0.1f;
+  if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS){
+    objects_pos[0].z += 0.01f;
+    bounding_boxes[0].max_extents += 0.01f;
+    bounding_boxes[0].min_extents += 0.01f;
+  }
+  if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
+    objects_pos[0].z -= 0.01f;
+    bounding_boxes[0].max_extents -= 0.01f;
+    bounding_boxes[0].min_extents -= 0.01f;
+  }
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
