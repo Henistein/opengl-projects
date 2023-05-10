@@ -42,6 +42,8 @@ GLuint VAO[2];
 GLuint VBO[2];
 GLuint EBO[2];
 
+float speed = 0.01f;
+
 struct bbox {
   glm::vec3 min_extents;
   glm::vec3 max_extents;
@@ -384,14 +386,24 @@ void processInput(GLFWwindow *window){
     cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
   // options
   if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS){
-    objects_pos[0].z += 0.1f;
-    bounding_boxes[0].max_extents += 0.1f;
-    bounding_boxes[0].min_extents += 0.1f;
+    objects_pos[0].z += speed;
+    bounding_boxes[0].max_extents += glm::vec3(0.0f, 0.0f, speed);
+    bounding_boxes[0].min_extents += glm::vec3(0.0f, 0.0f, speed);
   }
   if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
-    objects_pos[0].z -= 0.1f;
-    bounding_boxes[0].max_extents -= 0.1f;
-    bounding_boxes[0].min_extents -= 0.1f;
+    objects_pos[0].z -= speed;
+    bounding_boxes[0].max_extents -= glm::vec3(0.0f, 0.0f, speed);
+    bounding_boxes[0].min_extents -= glm::vec3(0.0f, 0.0f, speed);
+  }
+  if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS){
+    objects_pos[0].y += speed;
+    bounding_boxes[0].max_extents += glm::vec3(0.0f, speed, 0.0f);
+    bounding_boxes[0].min_extents += glm::vec3(0.0f, speed, 0.0f);
+  }
+  if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS){
+    objects_pos[0].y -= speed;
+    bounding_boxes[0].max_extents -= glm::vec3(0.0f, speed, 0.0f);
+    bounding_boxes[0].min_extents -= glm::vec3(0.0f, speed, 0.0f);
   }
 }
 
