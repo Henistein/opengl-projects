@@ -35,7 +35,7 @@ std::string objects_path[] = {
 };
 std::vector<Model> objects;
 std::vector<glm::vec3> objects_pos = {
-    glm::vec3(0.0f, 0.0f, 0.0f),
+    glm::vec3(0.0f, 1.0f, 5.0f),
     glm::vec3(0.0f, 0.0f, 0.0f)
 };
 GLuint VAO[2];
@@ -293,7 +293,6 @@ void Window::refresh(void){
   }
 
   // Check collisions (broad phase)
-  /*
   if(checkCollision(bounding_boxes[0], bounding_boxes[1])){
     std::cout << "Collision detected" << std::endl;
     this->shaders[1]->setVec4("color", glm::vec4(1.0f, 0.0f, 0.0f, 0.5f));
@@ -301,13 +300,21 @@ void Window::refresh(void){
   else{
     this->shaders[1]->setVec4("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.5f));
   }
+  /*
   */
 
-  // Check collisions (narrow phase)
+  // Copy object mesh and translate vertices
   Mesh translated_mesh(objects[0].meshes[0]);
   translateMesh(translated_mesh, objects_pos[0]);
+
+  // Check collisions (narrow phase)
+  this->shaders[0]->use();
   if(sat(translated_mesh, objects[1].meshes[0])){
     std::cout << "Collision detected" << std::endl;
+    this->shaders[0]->setBool("collide", true);
+  }
+  else{
+    this->shaders[0]->setBool("collide", false);
   }
 
 
