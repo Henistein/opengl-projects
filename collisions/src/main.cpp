@@ -42,6 +42,10 @@ GLuint VAO[2];
 GLuint VBO[2];
 GLuint EBO[2];
 
+GLuint inter_VAO;
+GLuint inter_VBO;
+GLuint inter_EBO;
+
 float speed = 0.01f;
 
 struct bbox {
@@ -56,7 +60,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
-/* Auxiliar functions */
+/* Broad Phase */
 struct bbox get_mesh_min_max_coord(Mesh mesh){
   glm::vec3 minExtents(FLT_MAX);
   glm::vec3 maxExtents(-FLT_MAX);
@@ -85,32 +89,6 @@ struct bbox get_mesh_min_max_coord(Mesh mesh){
     }
   }
   return {minExtents, maxExtents};
-}
-
-std::vector<glm::vec3> create_aabb(glm::vec3 min_extents, glm::vec3 max_extents) {
-  std::vector<glm::vec3> vertices;
-
-  // calculate the eight vertices of the box
-  glm::vec3 v0 = glm::vec3(min_extents.x, min_extents.y, min_extents.z);
-  glm::vec3 v1 = glm::vec3(max_extents.x, min_extents.y, min_extents.z);
-  glm::vec3 v2 = glm::vec3(max_extents.x, min_extents.y, max_extents.z);
-  glm::vec3 v3 = glm::vec3(min_extents.x, min_extents.y, max_extents.z);
-  glm::vec3 v4 = glm::vec3(min_extents.x, max_extents.y, min_extents.z);
-  glm::vec3 v5 = glm::vec3(max_extents.x, max_extents.y, min_extents.z);
-  glm::vec3 v6 = glm::vec3(max_extents.x, max_extents.y, max_extents.z);
-  glm::vec3 v7 = glm::vec3(min_extents.x, max_extents.y, max_extents.z);
-
-  // add the vertices to the vector
-  vertices.push_back(v0);
-  vertices.push_back(v1);
-  vertices.push_back(v2);
-  vertices.push_back(v3);
-  vertices.push_back(v4);
-  vertices.push_back(v5);
-  vertices.push_back(v6);
-  vertices.push_back(v7);
-
-  return vertices;
 }
 
 void draw_bbox(glm::vec3 minExtents, glm::vec3 maxExtents, GLuint *VAO, GLuint *VBO, GLuint *EBO) {
@@ -156,6 +134,23 @@ bool checkCollision(struct bbox bbox1, struct bbox bbox2) {
   bool y_overlap = bbox1.max_extents.y >= bbox2.min_extents.y && bbox2.max_extents.y >= bbox1.min_extents.y;
   bool z_overlap = bbox1.max_extents.z >= bbox2.min_extents.z && bbox2.max_extents.z >= bbox1.min_extents.z;
   return x_overlap && y_overlap && z_overlap;
+}
+
+struct bbox getIntersectionExtents(struct bbox bbox1, struct bbox bbox2) {
+  struct bbox intersectionExtents;
+  // Calculate the minimum and maximum extents of the intersection in the x and z axes
+  intersectionExtents.min_extents.x = std::max(bbox1.min_extents.x, bbox2.min_extents.x);
+  intersectionExtents.min_extents.z = std::max(bbox1.min_extents.z, bbox2.min_extents.z);
+
+  intersectionExtents.max_extents.x = std::min(bbox1.max_extents.x, bbox2.max_extents.x);
+  intersectionExtents.max_extents.z = std::min(bbox1.max_extents.z, bbox2.max_extents.z);
+
+  // Calculate the union of the extents in the y axis
+  intersectionExtents.min_extents.y = std::min(bbox1.min_extents.y, bbox2.min_extents.y);
+  intersectionExtents.max_extents.y = std::max(bbox1.max_extents.y, bbox2.max_extents.y);
+
+
+  return intersectionExtents;
 }
 
 
@@ -296,14 +291,28 @@ void Window::refresh(void){
 
   // Check collisions (broad phase)
   if(checkCollision(bounding_boxes[0], bounding_boxes[1])){
-    std::cout << "Collision detected" << std::endl;
-    this->shaders[1]->setVec4("color", glm::vec4(1.0f, 0.0f, 0.0f, 0.5f));
+    // bbox shader
+    this->shaders[1]->setVec4("color", glm::vec4(1.0f, 1.0f, 0.0f, 0.5f));
+
+    // calculate intersection extents
+    struct bbox inter_bbox = getIntersectionExtents(bounding_boxes[0], bounding_boxes[1]);
+    draw_bbox(inter_bbox.min_extents, inter_bbox.max_extents, &inter_VAO, &inter_VBO, &inter_EBO);
+    // intersection bbox shader
+    this->shaders[2]->use();
+    this->shaders[2]->setMat4("model", model);
+    this->shaders[2]->setMat4("view", view);
+    this->shaders[2]->setMat4("projection", projection);
+    // draw intersection bbox
+    glBindVertexArray(inter_VAO);
+    glLineWidth(8.0f);
+    glDrawElements(GL_LINES, 36, GL_UNSIGNED_INT, 0);
+    // change color to red
+    this->shaders[2]->setVec4("color", glm::vec4(1.0f, 0.0f, 0.0f, 0.5f));
   }
   else{
     this->shaders[1]->setVec4("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.5f));
   }
   /*
-  */
 
   // Copy object mesh and translate vertices
   Mesh translated_mesh(objects[0].meshes[0]);
@@ -319,6 +328,7 @@ void Window::refresh(void){
     this->shaders[0]->setBool("collide", false);
   }
 
+  */
 
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -344,6 +354,7 @@ int main(void){
 
   // build and compile shaders
   window.add_shader(new Shader("shader.vs", "shader.fs"));
+  window.add_shader(new Shader("bbox.vs", "bbox.fs"));
   window.add_shader(new Shader("bbox.vs", "bbox.fs"));
 
   // load objs
