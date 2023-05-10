@@ -149,26 +149,98 @@ void draw_bbox(glm::vec3 minExtents, glm::vec3 maxExtents, GLuint *VAO, GLuint *
 
 }
 
-/*
 bool checkCollision(struct bbox bbox1, struct bbox bbox2) {
   bool x_overlap = bbox1.max_extents.x >= bbox2.min_extents.x && bbox2.max_extents.x >= bbox1.min_extents.x;
   bool y_overlap = bbox1.max_extents.y >= bbox2.min_extents.y && bbox2.max_extents.y >= bbox1.min_extents.y;
   bool z_overlap = bbox1.max_extents.z >= bbox2.min_extents.z && bbox2.max_extents.z >= bbox1.min_extents.z;
   return x_overlap && y_overlap && z_overlap;
 }
-*/
 
-bool checkCollision(struct bbox bbox1, struct bbox bbox2) {
-  // verifies if x coordinates of both hitboxes hit
-  bool collisionX = bbox1.min_extents.x <= bbox2.max_extents.x && bbox1.max_extents.x >= bbox2.min_extents.x;
-  // verifies if y coordinates of both hitboxes hit
-  bool collisionY = bbox1.min_extents.y <= bbox2.max_extents.y && bbox1.max_extents.y >= bbox2.min_extents.y;
-  // verifies if z coordinates of both hitboxes hit
-  bool collisionZ = bbox1.min_extents.z <= bbox2.max_extents.z && bbox1.max_extents.z >= bbox2.min_extents.z;
 
-  return collisionX && collisionY && collisionZ;
+/* Narrow Phase */
+std::vector<glm::vec3> calculateMeshAxes(const Mesh &mesh){
+  std::vector<glm::vec3> axes;
+  for (unsigned int i = 0; i < mesh.indices.size(); i += 3){
+    const Vertex &v1 = mesh.vertices[mesh.indices[i]];
+    const Vertex &v2 = mesh.vertices[mesh.indices[i + 1]];
+    const Vertex &v3 = mesh.vertices[mesh.indices[i + 2]];
+    glm::vec3 faceNormal = glm::normalize(glm::cross(v2.Position - v1.Position, v3.Position - v1.Position));
+    axes.push_back(faceNormal);
+  }
+  return axes;
 }
 
+struct Projection {
+    float min;
+    float max;
+};
+
+Projection projectMeshOnAxis(const Mesh& mesh, const glm::vec3& axis) {
+    float min = glm::dot(axis, mesh.vertices[0].Position);
+    float max = min;
+
+    for (int i=1; i<mesh.vertices.size(); i++) {
+        // Project vertex onto axis
+        float projection = glm::dot(axis, mesh.vertices[i].Position);
+
+        // Update min/max values
+        if (projection < min) {
+            min = projection;
+        }
+        if (projection > max) {
+            max = projection;
+        }
+    }
+
+    return { min, max };
+}
+
+bool overlap(Projection p1, Projection p2) {
+    return !(p1.max < p2.min || p2.max < p1.min);
+}
+
+bool sat(Mesh mesh1, Mesh mesh2){
+  vector<glm::vec3> axes1 = calculateMeshAxes(mesh1);
+  vector<glm::vec3> axes2 = calculateMeshAxes(mesh2);
+
+  // loop over the axes1
+  for (int i = 0; i < axes1.size(); i++) {
+    glm::vec3 axis = axes1[i];
+    // project both shapes onto the axis
+    Projection p1 = projectMeshOnAxis(mesh1, axis);
+    Projection p2 = projectMeshOnAxis(mesh2, axis);
+    // do the projections overlap?
+    if (!overlap(p1, p2)){
+      // then we can guarantee that the shapes do not overlap
+      return false;
+    }
+  }
+
+  // loop over the axes2
+  for (int i = 0; i < axes2.size(); i++) {
+    glm::vec3 axis = axes2[i];
+    // project both shapes onto the axis
+    Projection p1 = projectMeshOnAxis(mesh1, axis);
+    Projection p2 = projectMeshOnAxis(mesh2, axis);
+    // do the projections overlap?
+    if (!overlap(p1, p2)){
+      // then we can guarantee that the shapes do not overlap
+      return false;
+    }
+  }
+  /*
+  */
+  // if we get here then we know that every axis had overlap on it
+  // so we can guarantee an intersection
+  return true;
+
+}
+
+void translateMesh(Mesh &mesh, const glm::vec3 translationVector){
+  for (int i = 0; i < mesh.vertices.size(); i++){
+    mesh.vertices[i].Position = mesh.vertices[i].Position + translationVector;
+  }
+}
 
 /* Main code */
 void Window::refresh(void){
@@ -186,7 +258,6 @@ void Window::refresh(void){
   glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
   glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
   glm::mat4 projection = glm::perspective(glm::radians(fov), (float)W_WIDTH / (float)W_HEIGHT, 0.1f, 1000.0f);
-
 
   // pass model view projection at each obj and bbox
   for(long unsigned int i=0; i<objects_pos.size(); i++){
@@ -222,6 +293,7 @@ void Window::refresh(void){
   }
 
   // Check collisions (broad phase)
+  /*
   if(checkCollision(bounding_boxes[0], bounding_boxes[1])){
     std::cout << "Collision detected" << std::endl;
     this->shaders[1]->setVec4("color", glm::vec4(1.0f, 0.0f, 0.0f, 0.5f));
@@ -229,6 +301,16 @@ void Window::refresh(void){
   else{
     this->shaders[1]->setVec4("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.5f));
   }
+  */
+
+  // Check collisions (narrow phase)
+  Mesh translated_mesh(objects[0].meshes[0]);
+  translateMesh(translated_mesh, objects_pos[0]);
+  if(sat(translated_mesh, objects[1].meshes[0])){
+    std::cout << "Collision detected" << std::endl;
+  }
+
+
 
   // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
   // -------------------------------------------------------------------------------
@@ -295,14 +377,14 @@ void processInput(GLFWwindow *window){
     cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
   // options
   if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS){
-    objects_pos[0].z += 0.01f;
-    bounding_boxes[0].max_extents += 0.01f;
-    bounding_boxes[0].min_extents += 0.01f;
+    objects_pos[0].z += 0.1f;
+    bounding_boxes[0].max_extents += 0.1f;
+    bounding_boxes[0].min_extents += 0.1f;
   }
   if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
-    objects_pos[0].z -= 0.01f;
-    bounding_boxes[0].max_extents -= 0.01f;
-    bounding_boxes[0].min_extents -= 0.01f;
+    objects_pos[0].z -= 0.1f;
+    bounding_boxes[0].max_extents -= 0.1f;
+    bounding_boxes[0].min_extents -= 0.1f;
   }
 }
 
