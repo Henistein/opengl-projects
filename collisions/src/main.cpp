@@ -1,4 +1,5 @@
 #include <iostream>
+#include <memory>
 
 #include "window.hpp"
 #include "mygraphics.hpp"
@@ -153,18 +154,119 @@ struct bbox getIntersectionExtents(struct bbox bbox1, struct bbox bbox2) {
   return intersectionExtents;
 }
 
+/*
+std::unique_ptr<Mesh> get_mesh_within_bbox(const Mesh& mesh, const bbox& boundingBox)
+{
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+    std::vector<Texture> textures;
+
+    // Iterate over the mesh vertices
+    for (unsigned int i = 0; i < mesh.vertices.size(); i++)
+    {
+        const Vertex& vertex = mesh.vertices[i];
+
+        // Check if the vertex position is inside the bounding box
+        if (vertex.Position.x >= boundingBox.min_extents.x && vertex.Position.x <= boundingBox.max_extents.x &&
+            vertex.Position.y >= boundingBox.min_extents.y && vertex.Position.y <= boundingBox.max_extents.y &&
+            vertex.Position.z >= boundingBox.min_extents.z && vertex.Position.z <= boundingBox.max_extents.z)
+        {
+            // Add the vertex to the new mesh
+            vertices.push_back(vertex);
+            // Add the index of the vertex in the original mesh
+            //indices.push_back(i);
+            indices.push_back(vertices.size()-1);
+        }
+    }
+
+    // Iterate over the mesh textures
+    for (unsigned int i = 0; i < mesh.textures.size(); i++)
+    {
+        const Texture& texture = mesh.textures[i];
+
+        // Add the texture to the new mesh
+        textures.push_back(texture);
+    }
+
+    // Check if any vertices were found within the bounding box
+    if (vertices.empty())
+    {
+        return nullptr; // Return nullptr or use optional return value to indicate no mesh
+    }
+
+    // Create and return the new mesh object
+    return std::make_unique<Mesh>(vertices, indices, textures);
+}*/
+std::unique_ptr<Mesh> get_mesh_within_bbox(const Mesh& mesh, const bbox& boundingBox)
+{
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+    std::vector<Texture> textures;
+
+    // Track the mapping between original vertex indices and new vertex indices
+    std::unordered_map<unsigned int, unsigned int> vertexIndexMap;
+
+    // Iterate over the mesh indices
+    for (unsigned int i = 0; i < mesh.indices.size(); i++)
+    {
+        unsigned int originalIndex = mesh.indices[i];
+        const Vertex& vertex = mesh.vertices[originalIndex];
+
+        // Check if the vertex position is inside the bounding box
+        if (vertex.Position.x >= boundingBox.min_extents.x && vertex.Position.x <= boundingBox.max_extents.x &&
+            vertex.Position.y >= boundingBox.min_extents.y && vertex.Position.y <= boundingBox.max_extents.y &&
+            vertex.Position.z >= boundingBox.min_extents.z && vertex.Position.z <= boundingBox.max_extents.z)
+        {
+            // Check if the vertex already exists in the subset mesh
+            auto it = vertexIndexMap.find(originalIndex);
+            if (it != vertexIndexMap.end())
+            {
+                // Vertex already added, use the existing index
+                indices.push_back(it->second);
+            }
+            else
+            {
+                // Add the vertex to the new mesh
+                unsigned int newIndex = static_cast<unsigned int>(vertices.size());
+                vertexIndexMap[originalIndex] = newIndex;
+                vertices.push_back(vertex);
+                indices.push_back(newIndex);
+            }
+        }
+    }
+
+    // Check if any vertices were found within the bounding box
+    if (vertices.empty())
+    {
+        return nullptr; // Return nullptr or use optional return value to indicate no mesh
+    }
+
+    // Create and return the new mesh object
+    return std::make_unique<Mesh>(vertices, indices, textures);
+}
+
+
+
 
 /* Narrow Phase */
 std::vector<glm::vec3> calculateMeshAxes(const Mesh &mesh){
   std::vector<glm::vec3> axes;
   for (unsigned int i = 0; i < mesh.indices.size(); i += 3){
     const Vertex &v1 = mesh.vertices[mesh.indices[i]];
-    const Vertex &v2 = mesh.vertices[mesh.indices[i + 1]];
-    const Vertex &v3 = mesh.vertices[mesh.indices[i + 2]];
+    //const Vertex &v2 = mesh.vertices[mesh.indices[i + 1]];
+    //const Vertex &v3 = mesh.vertices[mesh.indices[i + 2]];
+    const Vertex &v2 = mesh.vertices[mesh.indices[i + 1 >= mesh.vertices.size() ? 0 : i + 1]];
+    const Vertex &v3 = mesh.vertices[mesh.indices[i + 2 >= mesh.vertices.size() ? 0 : i + 2]];
+
     glm::vec3 faceNormal = glm::normalize(glm::cross(v2.Position - v1.Position, v3.Position - v1.Position));
     axes.push_back(faceNormal);
   }
   return axes;
+    /*
+    std::cout << v1.Position.x << " " << v1.Position.y << " " << v1.Position.z << std::endl;
+    std::cout << v2.Position.x << " " << v2.Position.y << " " << v2.Position.z << std::endl;
+    std::cout << v3.Position.x << " " << v3.Position.y << " " << v3.Position.z << std::endl;
+    */
 }
 
 struct Projection {
@@ -225,8 +327,8 @@ bool sat(Mesh mesh1, Mesh mesh2){
       return false;
     }
   }
-  /*
-  */
+
+
   // if we get here then we know that every axis had overlap on it
   // so we can guarantee an intersection
   return true;
@@ -308,6 +410,55 @@ void Window::refresh(void){
     glDrawElements(GL_LINES, 36, GL_UNSIGNED_INT, 0);
     // change color to red
     this->shaders[2]->setVec4("color", glm::vec4(1.0f, 0.0f, 0.0f, 0.5f));
+
+
+    // Narrow Pahse
+    // get the part of mesh1 and mesh2 that is inside inter_bbox
+    Mesh translated_mesh1(objects[0].meshes[0]);
+    Mesh translated_mesh2(objects[1].meshes[0]);
+    translateMesh(translated_mesh1, objects_pos[0]);
+    translateMesh(translated_mesh2, objects_pos[1]);
+    std::unique_ptr<Mesh> mesh1_inter = get_mesh_within_bbox(translated_mesh1, inter_bbox);
+    std::unique_ptr<Mesh> mesh2_inter = get_mesh_within_bbox(translated_mesh2, inter_bbox);
+
+    if(!(mesh1_inter == nullptr || mesh2_inter == nullptr)){
+      Mesh& mesh1_inter_obj = *mesh1_inter;
+      Mesh& mesh2_inter_obj = *mesh2_inter;
+      // translate the new meshes
+      //translateMesh(mesh1_inter_obj, objects_pos[0]);
+      //translateMesh(mesh2_inter_obj, objects_pos[1]);
+      //if(sat(mesh1_inter_obj, mesh2_inter_obj)){
+
+        /*
+        glm::mat4 aux_model = glm::translate(model, objects_pos[0]);
+        // activate objs shader
+        this->shaders[0]->use();
+        this->shaders[0]->setMat4("model", aux_model);
+        this->shaders[0]->setMat4("view", view);
+        this->shaders[0]->setMat4("projection", projection);
+        mesh1_inter_obj.Draw(*this->shaders[0]);
+
+        aux_model = glm::translate(model, objects_pos[1]);
+        // activate objs shader
+        this->shaders[0]->use();
+        this->shaders[0]->setMat4("model", aux_model);
+        this->shaders[0]->setMat4("view", view);
+        this->shaders[0]->setMat4("projection", projection);
+        mesh2_inter_obj.Draw(*this->shaders[0]);
+        */
+      
+      //std::cout << mesh1_inter_obj.vertices.size() << " " << mesh1_inter_obj.indices.size() << std::endl;
+
+      if(sat(mesh1_inter_obj, mesh2_inter_obj)){
+        std::cout << "Collision detected" << std::endl;
+        this->shaders[0]->use();
+        this->shaders[0]->setBool("collide", true);
+      }
+      else{
+        this->shaders[0]->use();
+        this->shaders[0]->setBool("collide", false);
+      }
+    }
   }
   else{
     this->shaders[1]->setVec4("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.5f));
@@ -317,6 +468,8 @@ void Window::refresh(void){
   // Copy object mesh and translate vertices
   Mesh translated_mesh(objects[0].meshes[0]);
   translateMesh(translated_mesh, objects_pos[0]);
+
+  // 
 
   // Check collisions (narrow phase)
   this->shaders[0]->use();
